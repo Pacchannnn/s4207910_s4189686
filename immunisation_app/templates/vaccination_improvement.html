@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Vaccination Improvement | Immunisation Lens{% endblock %}
+{% block content %}
+<section class="page-intro analysis-intro">
+  <div class="content-shell intro-grid">
+    <div><p class="eyebrow">Deep analysis</p><h1>Largest vaccination-rate improvements</h1></div>
+    <p class="lead">Compare two year-specific datasets and rank countries by the increase in administered doses as a share of population.</p>
+  </div>
+</section>
+
+<section class="filter-band" aria-label="Vaccination improvement filters"><div class="content-shell">
+  <form class="filter-form improvement-form" method="get">
+    <label><span>Antigen</span><select name="antigen" required>{% for item in reference.antigens %}<option value="{{ item.id }}" {{ 'selected' if item.id == filters.antigen else '' }}>{{ item.id }} - {{ item.name }}</option>{% endfor %}</select></label>
+    <label><span>Start year</span><select name="start_year" required>{% for item in reference.years|reverse %}<option value="{{ item.value }}" {{ 'selected' if item.value == filters.start_year else '' }}>{{ item.value }}</option>{% endfor %}</select></label>
+    <label><span>End year</span><select name="end_year" required>{% for item in reference.years %}<option value="{{ item.value }}" {{ 'selected' if item.value == filters.end_year else '' }}>{{ item.value }}</option>{% endfor %}</select></label>
+    <label><span>Number of countries</span><input type="number" name="limit" min="3" max="50" value="{{ filters.limit }}" required></label>
+    <div class="sort-pair"><label><span>Sort by</span><select name="sort"><option value="improvement" {{ 'selected' if filters.sort == 'improvement' else '' }}>Improvement</option><option value="end_rate" {{ 'selected' if filters.sort == 'end_rate' else '' }}>End rate</option><option value="start_rate" {{ 'selected' if filters.sort == 'start_rate' else '' }}>Start rate</option><option value="country" {{ 'selected' if filters.sort == 'country' else '' }}>Country</option></select></label><label><span>Direction</span><select name="direction"><option value="desc" {{ 'selected' if filters.direction == 'desc' else '' }}>Descending</option><option value="asc" {{ 'selected' if filters.direction == 'asc' else '' }}>Ascending</option></select></label></div>
+    <button class="button primary submit-filter" type="submit">Compare years</button>
+  </form>
+</div></section>
+
+<div class="content-shell">{% if errors %}<div class="notice error-notice" role="alert"><strong>Check the comparison</strong>{% for error in errors %}<p>{{ error }}</p>{% endfor %}</div>{% endif %}</div>
+
+<section class="section compact-section"><div class="content-shell methodology-band">
+  <div><p class="eyebrow light">Method</p><h2>Doses relative to population</h2></div>
+  <p>For each country and year, rate = administered doses / population x 100. Improvement = end rate - start rate. SQL CTEs build the two year datasets, join them by country and rank positive changes.</p>
+</div></section>
+
+<section class="section compact-section section-rule" aria-labelledby="improvement-results-title"><div class="content-shell">
+  <div class="section-heading split-heading results-heading"><div><p class="eyebrow">Ranked result</p><h2 id="improvement-results-title">{{ rows|length }} countries returned</h2></div><p>Rates describe recorded doses as a percentage of population; they are not the provided target-coverage field.</p></div>
+  {% if rows %}<div class="table-shell"><table>
+    <thead><tr><th>Rank</th><th>Country</th><th class="numeric">{{ filters.start_year }} rate</th><th class="numeric">{{ filters.end_year }} rate</th><th class="numeric">Improvement</th></tr></thead>
+    <tbody>{% for row in rows %}<tr><td><span class="rank-number">{{ loop.index }}</span></td><td><strong>{{ row.country }}</strong></td><td class="numeric">{{ row.start_rate|number(3) }}%</td><td class="numeric">{{ row.end_rate|number(3) }}%</td><td class="numeric"><span class="change-positive">+{{ row.improvement|number(3) }} pp</span></td></tr>{% endfor %}</tbody>
+  </table></div>{% elif not errors %}<div class="empty-state"><h3>No positive improvement found</h3><p>Choose a wider time range or another antigen.</p></div>{% endif %}
+</div></section>
+{% endblock %}
+

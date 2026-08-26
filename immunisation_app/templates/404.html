@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Page Not Found | Immunisation Lens{% endblock %}
+{% block content %}
+<section class="page-intro">
+  <div class="content-shell intro-grid">
+    <div><p class="eyebrow">404 error</p><h1>Page not found</h1></div>
+    <div>
+      <p class="lead">The address does not match one of the six data views.</p>
+      <a class="button primary" href="{{ url_for('pages.home') }}">Return to overview</a>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
