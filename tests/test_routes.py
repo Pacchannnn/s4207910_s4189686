@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import re
 import shutil
 import tempfile
 import unittest
+from html import escape
 from pathlib import Path
 
 from immunisation_app import create_app
+from immunisation_app.db import get_db
+from immunisation_app.queries import get_personas, get_team_members
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -52,6 +56,115 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b'aria-label="Primary navigation"', response.data)
         self.assertNotIn(b'class="nav-toggle"', response.data)
         self.assertNotIn(b"js/app.js", response.data)
+
+    def test_home_renders_exactly_four_database_fact_cards(self) -> None:
+        response = self.client.get("/")
+
+        self.assertEqual(response.data.count(b'class="fact-card '), 4)
+        for value in (b"2000", b"2024", b"217", b"5", b"3"):
+            self.assertIn(value, response.data)
+
+    def test_home_hero_names_vaccination_coverage_and_preventable_infections(
+        self,
+    ) -> None:
+        response = self.client.get("/")
+
+        self.assertIn(b"vaccination coverage", response.data)
+        self.assertIn(b"preventable infections", response.data)
+
+    def test_home_fact_cards_follow_snapshot_database_changes(self) -> None:
+        with self.app.app_context():
+            database = get_db()
+            database.execute("INSERT INTO YearDate (YearID) VALUES (?)", (1999,))
+            database.commit()
+
+        response = self.client.get("/")
+        fact_cards = re.findall(
+            rb'<article class="fact-card [^"]+">(.*?)</article>',
+            response.data,
+            re.DOTALL,
+        )
+
+        self.assertEqual(len(fact_cards), 4)
+        self.assertIn(b"1999-2024", b"".join(fact_cards))
+
+    def test_home_links_to_both_explorers_and_both_analyses(self) -> None:
+        response = self.client.get("/")
+
+        for path in (
+            b"/vaccinations",
+            b"/infections",
+            b"/vaccination-improvement",
+            b"/infection-benchmark",
+        ):
+            with self.subTest(path=path):
+                self.assertIn(
+                    b'<a class="path-item" href="' + path + b'">',
+                    response.data,
+                )
+
+    def test_mission_presents_perspective_guidance_and_database_content(self) -> None:
+        with self.app.app_context():
+            database = get_db()
+            persona_ids = [
+                row[0]
+                for row in database.execute(
+                    "SELECT persona_id FROM ProjectPersona ORDER BY persona_id"
+                )
+            ]
+            database.executemany(
+                """
+                UPDATE ProjectPersona
+                SET name = ?, role = ?, goal = ?, need = ?, app_feature = ?
+                WHERE persona_id = ?
+                """,
+                [
+                    (
+                        f"Test persona & {index}",
+                        f"Test role {index}",
+                        f"Test goal {index}",
+                        f"Test need {index}",
+                        f"Test feature {index}",
+                        persona_id,
+                    )
+                    for index, persona_id in enumerate(persona_ids, start=1)
+                ],
+            )
+            database.executemany(
+                """
+                UPDATE ProjectTeamMember
+                SET name = ?, student_number = ?, responsibility = ?
+                WHERE member_id = ?
+                """,
+                [
+                    ("Test member 1", "test-sid-1", "Test responsibility 1", 1),
+                    ("Test member 2", "test-sid-2", "Test responsibility 2", 2),
+                ],
+            )
+            database.commit()
+            personas = get_personas(database)
+            members = get_team_members(database)
+
+        response = self.client.get("/mission")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"respectfully presented data", response.data)
+        self.assertIn(b"without presenting association as causation", response.data)
+        for layer in (b"Orient", b"Focus", b"Deepen"):
+            self.assertIn(layer, response.data)
+        for persona in personas:
+            for value in persona.values():
+                self.assertIn(escape(str(value)).encode(), response.data)
+
+        non_placeholder_members = [
+            member
+            for member in members
+            if "replace" not in member["name"].lower()
+            and not member["student_number"].lower().startswith("sid")
+        ]
+        for member in non_placeholder_members:
+            for value in member.values():
+                self.assertIn(escape(str(value)).encode(), response.data)
 
     def test_invalid_filters_render_a_labelled_alert(self) -> None:
         response = self.client.get(

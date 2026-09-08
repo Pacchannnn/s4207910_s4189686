@@ -21,9 +21,9 @@
       <p>The site supports quick orientation and deeper investigation without presenting association as causation.</p>
     </div>
     <ol class="use-steps">
-      <li><span>1</span><div><h3>Orient</h3><p>Start with four database facts and the mission behind the project.</p></div></li>
-      <li><span>2</span><div><h3>Explore</h3><p>Filter country, region, economy, antigen, infection and year.</p></div></li>
-      <li><span>3</span><div><h3>Analyse</h3><p>Compare two years or measure countries against a weighted global rate.</p></div></li>
+      <li><span>1</span><div><h3>Orient</h3><p>Start with the <a href="{{ url_for('pages.home') }}">database overview</a> and this mission page.</p></div></li>
+      <li><span>2</span><div><h3>Focus</h3><p>Use the <a href="{{ url_for('pages.vaccinations') }}">vaccination</a> and <a href="{{ url_for('pages.infections') }}">infection</a> explorers to filter by place, topic and year.</p></div></li>
+      <li><span>3</span><div><h3>Deepen</h3><p>Compare <a href="{{ url_for('pages.vaccination_improvement') }}">vaccination change between two years</a> or place countries against a <a href="{{ url_for('pages.infection_benchmark') }}">weighted global infection rate</a>.</p></div></li>
     </ol>
   </div>
 </section>
