@@ -1,0 +1,35 @@
+{#- ====================================================================== -#}
+{#-  Shared template macros.                                              -#}
+{#-  Kept in their own file so both data pages import the same behaviour.  -#}
+{#- ====================================================================== -#}
+
+
+{#-
+  sortlink(label, key, cur_sort, cur_dir, sp, dp, default_dir)
+
+  Renders a clickable column heading.  It rebuilds the current query string,
+  swaps in the requested sort key, and flips the direction when that column is
+  already the active one - so every filter the user has chosen survives a sort.
+
+  sp / dp let a page carry two independent sort states (this is how the Level 2
+  page sorts its country table and its summary table separately).
+-#}
+{% macro sortlink(label, key, cur_sort, cur_dir,
+                  sp='sort', dp='dir', default_dir='desc') -%}
+  {%- set active = (cur_sort == key) -%}
+  {%- set nd = (('asc' if cur_dir == 'desc' else 'desc') if active else default_dir) -%}
+  {%- set args = request.args.to_dict() -%}
+  {%- set _ = args.update({sp: key, dp: nd}) -%}
+  <a class="sortlink{{ ' is-active' if active }}"
+     href="{{ url_for(request.endpoint, **args) }}">{{ label
+     }}<span class="caret" aria-hidden="true">{{
+       '▾' if active and cur_dir == 'desc'
+       else ('▴' if active else '⇅') }}</span></a>
+{%- endmacro %}
+
+
+{#- The matching aria-sort value, so screen readers announce the sort state. -#}
+{% macro aria_sort(key, cur_sort, cur_dir) -%}
+  {{- 'descending' if cur_sort == key and cur_dir == 'desc'
+      else ('ascending' if cur_sort == key else 'none') -}}
+{%- endmacro %}
