@@ -32,7 +32,10 @@
   </div>
 </section>
 
-<div class="content-shell">{% if errors %}<div class="notice error-notice" role="alert"><strong>Check the filters</strong>{% for error in errors %}<p>{{ error }}</p>{% endfor %}</div>{% endif %}</div>
+<div class="content-shell">
+  {% set error_title = "Check the filters" %}
+  {% include "components/validation_notice.html" %}
+</div>
 
 {% if selected_summary %}
 <section class="section compact-section">
@@ -48,7 +51,7 @@
 <section class="section compact-section" aria-labelledby="economy-summary-title">
   <div class="content-shell">
     <div class="section-heading split-heading results-heading"><div><p class="eyebrow">Combined-table summary</p><h2 id="economy-summary-title">{{ infection_name }} across all economies</h2></div><p>Totals combine infection, country, economy and population tables for {{ filters.year }}.</p></div>
-    {% if summary %}<div class="table-shell"><table>
+    {% if summary %}<div class="table-shell" tabindex="0"><table>
       <thead><tr><th>Economic status</th><th class="numeric">Countries</th><th class="numeric">Cases</th><th class="numeric">Population</th><th class="numeric">Cases per 100,000</th></tr></thead>
       <tbody>{% for row in summary %}<tr class="{{ 'selected-row' if row.economy_id == filters.economy else '' }}"><td><strong>{{ row.economy }}</strong></td><td class="numeric">{{ row.country_count }}</td><td class="numeric">{{ row.total_cases|number }}</td><td class="numeric">{{ row.represented_population|number }}</td><td class="numeric">{{ row.cases_per_100k|number(2) }}</td></tr>{% endfor %}</tbody>
     </table></div>{% endif %}
@@ -58,7 +61,7 @@
 <section class="section section-rule compact-section" aria-labelledby="infection-results-title">
   <div class="content-shell">
     <div class="section-heading split-heading results-heading"><div><p class="eyebrow">Country detail</p><h2 id="infection-results-title">{{ rows|length }} matching countries</h2></div><p>Rate = reported cases / population x 100,000. Records without a positive population are excluded.</p></div>
-    {% if rows %}<div class="table-shell"><table>
+    {% if rows %}<div class="table-shell" tabindex="0"><table>
       <thead><tr><th>Infection</th><th>Country</th><th>Economic status</th><th>Year</th><th class="numeric">Cases</th><th class="numeric">Population</th><th class="numeric">Cases per 100,000</th></tr></thead>
       <tbody>{% for row in rows %}<tr><td><strong>{{ row.infection }}</strong></td><td>{{ row.country }}</td><td>{{ row.economy }}</td><td>{{ row.year }}</td><td class="numeric">{{ row.cases|number }}</td><td class="numeric">{{ row.population|number }}</td><td class="numeric"><strong>{{ row.cases_per_100k|number(2) }}</strong></td></tr>{% endfor %}</tbody>
     </table></div>{% elif not errors %}<div class="empty-state"><h3>No matching countries</h3><p>Clear the country search or choose another year and economic status.</p></div>{% endif %}

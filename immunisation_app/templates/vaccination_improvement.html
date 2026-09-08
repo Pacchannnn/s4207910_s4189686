@@ -19,16 +19,20 @@
   </form>
 </div></section>
 
-<div class="content-shell">{% if errors %}<div class="notice error-notice" role="alert"><strong>Check the comparison</strong>{% for error in errors %}<p>{{ error }}</p>{% endfor %}</div>{% endif %}</div>
+<div class="content-shell">
+  {% set error_title = "Check the comparison" %}
+  {% include "components/validation_notice.html" %}
+</div>
 
-<section class="section compact-section"><div class="content-shell methodology-band">
-  <div><p class="eyebrow light">Method</p><h2>Doses relative to population</h2></div>
-  <p>For each country and year, rate = administered doses / population x 100. Improvement = end rate - start rate. SQL CTEs build the two year datasets, join them by country and rank positive changes.</p>
+<section class="section compact-section"><div class="content-shell">
+  {% set methodology_title = "Doses relative to population" %}
+  {% set methodology_text = "For each country and year, rate = administered doses / population x 100. Improvement = end rate - start rate. SQL CTEs build the two year datasets, join them by country and rank positive changes." %}
+  {% include "components/methodology_note.html" %}
 </div></section>
 
 <section class="section compact-section section-rule" aria-labelledby="improvement-results-title"><div class="content-shell">
   <div class="section-heading split-heading results-heading"><div><p class="eyebrow">Ranked result</p><h2 id="improvement-results-title">{{ rows|length }} countries returned</h2></div><p>Rates describe recorded doses as a percentage of population; they are not the provided target-coverage field.</p></div>
-  {% if rows %}<div class="table-shell"><table>
+  {% if rows %}<div class="table-shell" tabindex="0"><table>
     <thead><tr><th>Rank</th><th>Country</th><th class="numeric">{{ filters.start_year }} rate</th><th class="numeric">{{ filters.end_year }} rate</th><th class="numeric">Improvement</th></tr></thead>
     <tbody>{% for row in rows %}<tr><td><span class="rank-number">{{ loop.index }}</span></td><td><strong>{{ row.country }}</strong></td><td class="numeric">{{ row.start_rate|number(3) }}%</td><td class="numeric">{{ row.end_rate|number(3) }}%</td><td class="numeric"><span class="change-positive">+{{ row.improvement|number(3) }} pp</span></td></tr>{% endfor %}</tbody>
   </table></div>{% elif not errors %}<div class="empty-state"><h3>No positive improvement found</h3><p>Choose a wider time range or another antigen.</p></div>{% endif %}

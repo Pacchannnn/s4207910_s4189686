@@ -16,7 +16,10 @@
   </form>
 </div></section>
 
-<div class="content-shell">{% if errors %}<div class="notice error-notice" role="alert"><strong>Check the filters</strong>{% for error in errors %}<p>{{ error }}</p>{% endfor %}</div>{% endif %}</div>
+<div class="content-shell">
+  {% set error_title = "Check the filters" %}
+  {% include "components/validation_notice.html" %}
+</div>
 
 {% if global_row %}
 <section class="section compact-section" aria-labelledby="global-title"><div class="content-shell global-benchmark">
@@ -28,7 +31,7 @@
 
 <section class="section compact-section section-rule" aria-labelledby="country-benchmark-title"><div class="content-shell">
   <div class="section-heading split-heading results-heading"><div><p class="eyebrow">Country comparison</p><h2 id="country-benchmark-title">Countries above global rate</h2></div><p>The first table row repeats the global value for direct comparison. Country rows are ordered from highest reported rate.</p></div>
-  {% if global_row %}<div class="table-shell"><table>
+  {% if global_row %}<div class="table-shell" tabindex="0"><table>
     <thead><tr><th>Scope</th><th>Infection</th><th>Year</th><th class="numeric">Cases</th><th class="numeric">Population</th><th class="numeric">Cases per 100,000</th></tr></thead>
     <tbody>
       <tr class="global-row"><td><strong>Global benchmark</strong></td><td>{{ global_row.infection }}</td><td>{{ global_row.year }}</td><td class="numeric">{{ global_row.cases|number }}</td><td class="numeric">{{ global_row.population|number }}</td><td class="numeric"><strong>{{ global_row.cases_per_100k|number(3) }}</strong></td></tr>
@@ -37,9 +40,10 @@
   </table></div>{% elif not errors %}<div class="empty-state"><h3>No benchmark available</h3><p>Choose another year or infection type.</p></div>{% endif %}
 </div></section>
 
-<section class="section band-dark compact-section"><div class="content-shell two-column-section align-start">
-  <div class="section-heading compact-heading light-heading"><p class="eyebrow light">Calculation note</p><h2>Why the benchmark is weighted</h2></div>
-  <p class="lead-small">The query divides total reported cases by total represented population. It does not take a simple average of country rates, which would give small and large countries equal influence.</p>
+<section class="section compact-section"><div class="content-shell">
+  {% set methodology_title = "Why the benchmark is weighted" %}
+  {% set methodology_text = "The query divides total reported cases by total represented population. It does not take a simple average of country rates, which would give small and large countries equal influence." %}
+  {% include "components/methodology_note.html" %}
 </div></section>
 {% endblock %}
 

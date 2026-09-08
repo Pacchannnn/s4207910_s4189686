@@ -45,6 +45,40 @@ class RouteTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 200)
                 self.assertIn(b"Immunisation Lens", response.data)
 
+    def test_shared_shell_has_accessible_navigation_and_no_js_dependency(self) -> None:
+        response = self.client.get("/")
+
+        self.assertIn(b'href="#main-content"', response.data)
+        self.assertIn(b'aria-label="Primary navigation"', response.data)
+        self.assertNotIn(b'class="nav-toggle"', response.data)
+        self.assertNotIn(b"js/app.js", response.data)
+
+    def test_invalid_filters_render_a_labelled_alert(self) -> None:
+        response = self.client.get(
+            "/infections?economy=3&infection=MEA&year=twenty"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'role="alert"', response.data)
+        self.assertIn(b'aria-labelledby="filter-errors-title"', response.data)
+        self.assertIn(
+            b'<strong id="filter-errors-title">Check the filters</strong>',
+            response.data,
+        )
+
+    def test_analytical_page_renders_a_labelled_methodology_note(self) -> None:
+        response = self.client.get("/vaccination-improvement")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            b'<aside class="methodology-band" aria-labelledby="methodology-title">',
+            response.data,
+        )
+        self.assertIn(
+            b'<h2 id="methodology-title">Doses relative to population</h2>',
+            response.data,
+        )
+
     def test_vaccination_page_accepts_filters(self) -> None:
         response = self.client.get(
             "/vaccinations?antigen=MCV2&year=2010&sort=coverage&direction=desc"

@@ -6,7 +6,6 @@
   <meta name="description" content="Explore global immunisation coverage and preventable infection data.">
   <title>{% block title %}Immunisation Lens{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-  <script defer src="{{ url_for('static', filename='js/app.js') }}"></script>
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to content</a>
@@ -16,10 +15,6 @@
         <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
         <span>Immunisation Lens</span>
       </a>
-      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-navigation">
-        <span class="nav-toggle-lines" aria-hidden="true"><span></span><span></span><span></span></span>
-        <span class="sr-only">Open navigation</span>
-      </button>
       <nav class="site-nav" id="site-navigation" aria-label="Primary navigation">
         <a href="{{ url_for('pages.home') }}" class="{{ 'active' if active_page == 'home' else '' }}">Overview</a>
         <a href="{{ url_for('pages.mission') }}" class="{{ 'active' if active_page == 'mission' else '' }}">Mission</a>
