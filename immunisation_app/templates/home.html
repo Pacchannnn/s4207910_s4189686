@@ -4,7 +4,7 @@
 <section class="hero">
   <div class="hero-shade" aria-hidden="true"></div>
   <div class="content-shell hero-content">
-    <p class="eyebrow light">Preventable infectious diseases</p>
+    <p class="eyebrow light">Vaccination coverage and preventable infections</p>
     <h1>Global immunisation data, made explorable.</h1>
     <p class="hero-copy">Compare vaccination coverage, infection rates and long-term change across countries without losing the context behind the numbers.</p>
     <div class="button-row">
@@ -27,22 +27,22 @@
       <article class="fact-card accent-red">
         <span class="fact-value">{{ snapshot.first_year }}-{{ snapshot.last_year }}</span>
         <h3>Reporting period</h3>
-        <p>Twenty-five annual reporting points for trend comparison.</p>
+        <p>The first and latest reporting years available for comparison.</p>
       </article>
       <article class="fact-card accent-teal">
         <span class="fact-value">{{ snapshot.country_count }}</span>
         <h3>Countries and areas</h3>
-        <p>Coverage spans seven geographic regions.</p>
+        <p>Geographic records available for place-based comparison.</p>
       </article>
       <article class="fact-card accent-gold">
         <span class="fact-value">{{ snapshot.antigen_count }}</span>
         <h3>Antigen types</h3>
-        <p>Comparable vaccine dose and target records.</p>
+        <p>Vaccine categories with dose, target and coverage records.</p>
       </article>
       <article class="fact-card accent-blue">
         <span class="fact-value">{{ snapshot.infection_count }}</span>
         <h3>Infection types</h3>
-        <p>Measles, pertussis and rubella case data.</p>
+        <p>Preventable-infection categories with reported case data.</p>
       </article>
     </div>
   </div>
@@ -70,11 +70,17 @@
         <p>Compare reported cases and population-adjusted rates across economic groups.</p>
         <span class="text-link">Open infection explorer</span>
       </a>
-      <a class="path-item" href="{{ url_for('pages.infection_benchmark') }}">
+      <a class="path-item" href="{{ url_for('pages.vaccination_improvement') }}">
         <span class="path-number">03</span>
+        <h3>Coverage improvement</h3>
+        <p>Compare population-based vaccination rates between two reporting years.</p>
+        <span class="text-link">Open improvement analysis</span>
+      </a>
+      <a class="path-item" href="{{ url_for('pages.infection_benchmark') }}">
+        <span class="path-number">04</span>
         <h3>Global benchmark</h3>
         <p>See the weighted global rate and countries reporting rates above it.</p>
-        <span class="text-link">Open deep analysis</span>
+        <span class="text-link">Open benchmark analysis</span>
       </a>
     </div>
   </div>

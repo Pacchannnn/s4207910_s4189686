@@ -35,7 +35,7 @@ class QueryTests(unittest.TestCase):
         self.db.close()
         self.temp_dir.cleanup()
 
-    def test_snapshot_is_derived_from_database(self) -> None:
+    def test_snapshot_contains_four_presented_fact_groups(self) -> None:
         snapshot = get_snapshot(self.db)
 
         self.assertEqual(snapshot["first_year"], 2000)
