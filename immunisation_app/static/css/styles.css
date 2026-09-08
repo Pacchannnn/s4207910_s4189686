@@ -1,3 +1,4 @@
+/* 1. Tokens */
 :root {
   --ink: #171b20;
   --muted: #5d6875;
@@ -19,6 +20,7 @@
   font-synthesis: none;
 }
 
+/* 2. Reset and base elements */
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { margin: 0; min-width: 320px; background: var(--paper); color: var(--ink); line-height: 1.55; }
@@ -28,12 +30,15 @@ button, input, select { font: inherit; letter-spacing: 0; }
 h1, h2, h3, p { margin-top: 0; }
 h1, h2, h3 { line-height: 1.12; letter-spacing: 0; }
 p { color: var(--muted); }
+:focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; }
 
+/* 3. Shared layout */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .skip-link { position: fixed; left: 16px; top: -80px; z-index: 1000; background: var(--paper); padding: 12px 16px; border: 2px solid var(--ink); }
 .skip-link:focus { top: 16px; }
 .content-shell { width: min(calc(100% - 40px), var(--content)); margin-inline: auto; }
 
+/* 4. Navigation and footer */
 .site-header { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,.97); border-bottom: 1px solid var(--line); }
 .nav-shell { width: min(calc(100% - 40px), 1320px); min-height: 72px; margin-inline: auto; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .brand { display: inline-flex; align-items: center; gap: 11px; font-weight: 800; font-size: 18px; white-space: nowrap; }
@@ -46,10 +51,11 @@ p { color: var(--muted); }
 .site-nav a { color: #414a55; font-size: 14px; font-weight: 700; padding: 10px 12px; border-bottom: 2px solid transparent; }
 .site-nav a:hover, .site-nav a:focus-visible { color: var(--ink); background: var(--wash); }
 .site-nav a.active { color: var(--red); border-bottom-color: var(--red); }
-.nav-toggle { display: none; width: 42px; height: 42px; border: 1px solid var(--line); background: var(--paper); padding: 10px; }
-.nav-toggle-lines { display: grid; gap: 4px; }
-.nav-toggle-lines span { height: 2px; background: var(--ink); display: block; }
+.site-footer { border-top: 1px solid var(--line); background: #f0f2f3; padding-block: 34px; }
+.footer-layout { display: flex; justify-content: space-between; gap: 40px; }
+.footer-layout p { margin: 5px 0 0; font-size: 13px; }
 
+/* 5. Content components */
 .hero { position: relative; min-height: 520px; display: flex; align-items: center; color: white; background: #1e2b34 url('../images/immunisation-hero.png') center/cover no-repeat; overflow: hidden; }
 .hero-shade { position: absolute; inset: 0; background: rgba(11, 20, 28, .72); }
 .hero-content { position: relative; z-index: 1; padding-block: 76px 92px; }
@@ -134,6 +140,7 @@ p { color: var(--muted); }
 .team-row h3, .team-row p { margin-bottom: 3px; }
 .team-row strong { text-align: right; color: var(--teal); }
 
+/* 6. Forms and validation */
 .filter-band { background: #eef1f3; border-bottom: 1px solid var(--line); padding-block: 24px; }
 .filter-form { display: grid; gap: 14px; align-items: end; }
 .filter-form.five-columns { grid-template-columns: 1.05fr .65fr 1fr 1fr 1.25fr auto; }
@@ -147,7 +154,9 @@ p { color: var(--muted); }
 .submit-filter { height: 44px; white-space: nowrap; }
 
 .notice { margin-top: 20px; border-left: 4px solid var(--red); background: #fff1f2; padding: 15px 18px; }
-.notice p { margin: 3px 0 0; }
+.notice ul { margin: 6px 0 0; padding-left: 22px; }
+
+/* 7. Tables and data states */
 .results-heading { align-items: end; margin-bottom: 24px; }
 .summary-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; }
 .summary-card { border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; min-height: 150px; }
@@ -157,7 +166,9 @@ p { color: var(--muted); }
 .summary-card p { margin: 0; font-size: 14px; }
 
 .table-shell { width: 100%; overflow-x: auto; border: 1px solid var(--line); }
+.table-shell:focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; }
 table { width: 100%; border-collapse: collapse; min-width: 760px; }
+caption { padding: 12px 13px; color: var(--muted); font-weight: 700; text-align: left; }
 th { background: var(--ink); color: white; text-align: left; font-size: 12px; text-transform: uppercase; padding: 14px 13px; white-space: nowrap; }
 td { border-bottom: 1px solid var(--line); padding: 13px; font-size: 14px; vertical-align: middle; }
 tbody tr:nth-child(even) { background: #f7f8f9; }
@@ -174,6 +185,7 @@ tbody tr:last-child td { border-bottom: 0; }
 .empty-state h3 { margin-bottom: 6px; }
 .empty-state p { margin: 0; }
 
+/* 8. Page-specific components */
 .metric-strip { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); border: 1px solid var(--line); }
 .metric-strip article { padding: 22px; border-right: 1px solid var(--line); }
 .metric-strip article:last-child { border-right: 0; }
@@ -194,10 +206,7 @@ tbody tr:last-child td { border-bottom: 0; }
 .global-benchmark dt { color: rgba(255,255,255,.65); font-size: 12px; text-transform: uppercase; }
 .global-benchmark dd { margin: 3px 0 0; font-weight: 800; }
 
-.site-footer { border-top: 1px solid var(--line); background: #f0f2f3; padding-block: 34px; }
-.footer-layout { display: flex; justify-content: space-between; gap: 40px; }
-.footer-layout p { margin: 5px 0 0; font-size: 13px; }
-
+/* 9. Responsive rules */
 @media (max-width: 1100px) {
   .site-nav a { padding-inline: 8px; font-size: 13px; }
   .filter-form.five-columns, .filter-form.improvement-form { grid-template-columns: repeat(3,minmax(0,1fr)); }
@@ -206,11 +215,9 @@ tbody tr:last-child td { border-bottom: 0; }
 }
 
 @media (max-width: 860px) {
-  .nav-toggle { display: block; }
-  .site-nav { position: absolute; top: 72px; left: 0; right: 0; display: none; background: white; border-bottom: 1px solid var(--line); padding: 12px 20px 18px; grid-template-columns: repeat(2,minmax(0,1fr)); }
-  .site-nav.open { display: grid; }
-  .site-nav a { padding: 12px; border: 1px solid transparent; }
-  .site-nav a.active { border-color: var(--red); }
+  .nav-shell { flex-wrap: wrap; gap: 0; padding-block: 12px; }
+  .site-nav { width: 100%; overflow-x: auto; padding-top: 8px; }
+  .site-nav a { flex: 0 0 auto; padding: 10px; }
   .hero { min-height: 490px; background-position: 63% center; }
   .hero h1 { font-size: 44px; max-width: 650px; }
   .hero-copy { font-size: 18px; max-width: 590px; }
@@ -233,7 +240,6 @@ tbody tr:last-child td { border-bottom: 0; }
 @media (max-width: 640px) {
   .content-shell, .nav-shell { width: min(calc(100% - 28px), var(--content)); }
   .nav-shell { min-height: 64px; }
-  .site-nav { top: 64px; grid-template-columns: 1fr; }
   .brand { font-size: 16px; }
   .hero { min-height: 470px; }
   .hero-content { padding-block: 56px 64px; }
@@ -258,4 +264,13 @@ tbody tr:last-child td { border-bottom: 0; }
   .global-number strong { font-size: 44px; }
   .footer-layout { display: block; }
   .footer-layout > p { margin-top: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
 }

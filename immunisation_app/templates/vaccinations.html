@@ -42,7 +42,8 @@
 </section>
 
 <div class="content-shell">
-  {% if errors %}<div class="notice error-notice" role="alert"><strong>Check the filters</strong>{% for error in errors %}<p>{{ error }}</p>{% endfor %}</div>{% endif %}
+  {% set error_title = "Check the filters" %}
+  {% include "components/validation_notice.html" %}
 </div>
 
 <section class="section compact-section" aria-labelledby="regional-title">
@@ -72,7 +73,7 @@
       <p>Blank coverage values fall back to doses divided by target population. Zero targets are not divided.</p>
     </div>
     {% if rows %}
-    <div class="table-shell"><table>
+    <div class="table-shell" tabindex="0"><table>
       <thead><tr><th>Antigen</th><th>Year</th><th>Country</th><th>Region</th><th class="numeric">Doses</th><th class="numeric">Target</th><th class="numeric">Coverage</th><th>Status</th></tr></thead>
       <tbody>{% for row in rows %}<tr>
         <td><strong>{{ row.antigen }}</strong></td><td>{{ row.year }}</td><td>{{ row.country }}</td><td>{{ row.region_name }}</td>
