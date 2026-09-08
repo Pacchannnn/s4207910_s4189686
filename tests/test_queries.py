@@ -133,11 +133,83 @@ class QueryTests(unittest.TestCase):
 
         self.assertGreater(len(result["rows"]), 0)
         self.assertEqual(len(result["summary"]), 4)
+        self.assertTrue(all(row["economy_id"] == 3 for row in result["rows"]))
+        self.assertTrue(all(row["infection"] == "Measles" for row in result["rows"]))
+        self.assertTrue(all(row["year"] == 2022 for row in result["rows"]))
+        self.assertEqual(
+            set(result["rows"][0]),
+            {
+                "country",
+                "economy_id",
+                "economy",
+                "infection",
+                "year",
+                "cases",
+                "population",
+                "cases_per_100k",
+            },
+        )
         rates = [row["cases_per_100k"] for row in result["rows"]]
         self.assertEqual(rates, sorted(rates, reverse=True))
         sample = result["rows"][0]
         expected = sample["cases"] / sample["population"] * 100000
         self.assertAlmostEqual(sample["cases_per_100k"], expected, places=6)
+        for item in result["summary"]:
+            expected_rate = item["total_cases"] / item["represented_population"] * 100000
+            self.assertAlmostEqual(item["cases_per_100k"], expected_rate, places=6)
+
+    def test_infection_view_applies_country_search_and_all_sort_modes(self) -> None:
+        # This catches a removed SQL search predicate or an unwhitelisted sort mapping.
+        filtered = get_infection_by_economy(
+            self.db,
+            economy_id=3,
+            infection_id="MEA",
+            year=2022,
+            search="Zimbabwe",
+            sort_by="country",
+            direction="asc",
+        )
+
+        self.assertEqual([row["country"] for row in filtered["rows"]], ["Zimbabwe"])
+
+        for sort_by, direction in (
+            ("country", "asc"),
+            ("cases", "desc"),
+            ("population", "asc"),
+            ("rate", "desc"),
+        ):
+            with self.subTest(sort_by=sort_by, direction=direction):
+                result = get_infection_by_economy(
+                    self.db,
+                    economy_id=3,
+                    infection_id="MEA",
+                    year=2022,
+                    search="",
+                    sort_by=sort_by,
+                    direction=direction,
+                )
+                rows = result["rows"]
+                if sort_by == "country":
+                    self.assertEqual(
+                        [row["country"] for row in rows],
+                        sorted(
+                            (row["country"] for row in rows),
+                            reverse=direction == "desc",
+                        ),
+                    )
+                    continue
+
+                expected_rows = sorted(
+                    rows,
+                    key=lambda row: (row[sort_by if sort_by != "rate" else "cases_per_100k"], row["country"]),
+                    reverse=False,
+                )
+                if direction == "desc":
+                    expected_rows = sorted(
+                        rows,
+                        key=lambda row: (-row[sort_by if sort_by != "rate" else "cases_per_100k"], row["country"]),
+                    )
+                self.assertEqual(rows, expected_rows)
 
     def test_vaccination_improvement_uses_two_year_datasets(self) -> None:
         rows = get_vaccination_improvements(
