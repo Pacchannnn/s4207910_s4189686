@@ -1,0 +1,85 @@
+# Requirements and Current-State Matrix
+
+This is the acceptance checklist for the controlled refactor. Requirements are derived from the approved design and the supplied page brief; example figures are illustrative only. Current evidence is from the checked-in Flask source, templates, queries, and baseline tests.
+
+## Requirement matrix
+
+| ID | Requirement | Route | Query/template evidence | Test evidence | Current | Target |
+|---|---|---|---|---|---|---|
+| L1-A-01 | Capture attention with a clear, contextual introduction to global immunisation and preventable-infection data. | `/` | `views.home`; `templates/home.html` hero heading/copy and calls to explore. | `RouteTests.test_all_six_required_pages_render` | Met | Retain and refine accessible landing introduction. |
+| L1-A-02 | Identify the site's topics and explain the progression from overview to focused exploration and deeper analysis. | `/` | `home.html` path cards for vaccination, infection/economy, and benchmark; shared navigation in `base.html`. | `RouteTests.test_all_six_required_pages_render` | Met | Ensure all six destinations remain discoverable and progression is explicit. |
+| L1-A-03 | Show a dataset snapshot derived from the database (years, countries, antigens, and infection types). | `/` | `queries.get_snapshot` uses `MIN/MAX(YearID)` and counts from `YearDate`, `Country`, `Antigen`, `Infection_Type`; `home.html` snapshot. | `QueryTests.test_snapshot_is_derived_from_database` | Met | Preserve database-derived values and labels. |
+| L1-A-04 | Present exactly four clear, contextual database facts relevant to target personas. | `/` | `home.html` contains four `.fact-card` elements backed by `snapshot` fields. | No dedicated count/content test; route render covered by `RouteTests.test_all_six_required_pages_render`. | Partial | Keep exactly four facts, add requirements assertion, and keep values database-derived. |
+| L1-B-01 | Explain the site's respectful, informative, and unbiased perspective on the social challenge. | `/mission` | `views.mission`; `mission.html` heading/copy and mission sections. | `RouteTests.test_all_six_required_pages_render` | Met | Retain plain, neutral framing and make perspective explicit. |
+| L1-B-02 | Explain how users can use the site, including the orient/focus/deepen exploration guidance. | `/mission` | `mission.html` “How to use this site” numbered guidance and links. | `RouteTests.test_all_six_required_pages_render` | Met | Preserve guidance and connect it to the six-page journey. |
+| L1-B-03 | Display target personas with their goals, needs, and supported features from SQLite. | `/mission` | `queries.get_personas` selects `ProjectPersona`; `mission.html` renders role, name, goal, need, and app feature. | `QueryTests.test_mission_data_is_retrieved_from_database` | Met | Keep persona content database-derived and tested against mutations. |
+| L1-B-04 | Display the project team with exact names and student-number mapping supplied for submission. | `/mission` | `queries.get_team_members` selects `ProjectTeamMember`; `db.py` currently seeds `Student 1 - replace in database`/`sID1` and `Student 2 - replace in database`/`sID2`. | `QueryTests.test_mission_data_is_retrieved_from_database` only checks non-empty placeholders. | Blocked: exact names and student-number mapping not supplied | Replace placeholders only after user supplies identities; add an acceptance test that rejects placeholders. |
+| L2-01 | Use parameterized SQL for selection, filtering, sorting/whitelisted ordering, joining, aggregation, and explicit anomaly handling. | `/vaccinations`, `/infections`, `/vaccination-improvement`, `/infection-benchmark` | `queries.py`: `_safe_order`; parameterized `get_vaccination_view`, `get_infection_by_economy`, `get_vaccination_improvements`, and `get_above_global_infections`; joins and CTEs; vaccination `target_status`. | `QueryTests.test_sort_inputs_are_whitelisted`; query behavior tests for all four functions. | Partial | Extend coverage for every required SQL operation, limits, and malformed/no-data paths. |
+| L2-02 | Handle missing/invalid values and reported coverage above 100% explicitly without silently capping anomalies. | `/vaccinations` | `get_vaccination_view` uses `COALESCE` fallback from reported coverage to doses/target and labels `No data`, `Reported above 100%`, `Met target`, or `Below target`; template methodology note. | `QueryTests.test_vaccination_values_above_100_are_flagged_not_silently_capped` | Partial | Verify positive-target rules, exclusion from aggregates, and visible data-quality states. |
+| L2-A-01 | Provide antigen, year, country, and region controls; country and region filters work independently or together. | `/vaccinations` | `views.vaccinations` validates choices and passes filters; `vaccinations.html` GET form controls; query appends country/region predicates. | `RouteTests.test_vaccination_page_accepts_filters`; query filter test. | Met | Add malformed-input and combined-filter route coverage while retaining shareable GET URLs. |
+| L2-A-02 | Return country results limited to countries meeting at least 90% of the selected antigen target. | `/vaccinations` | `vaccinations.html` states target summary, but `get_vaccination_view` currently returns all matching detail rows and only labels status. | Existing query test checks rows/sorting, not 90% detail threshold. | Missing | Apply the >=90% result rule in SQL and test that every returned country meets it. |
+| L2-A-03 | Provide a regional summary with countries with data, countries meeting 90%, and a defined regional coverage statistic. | `/vaccinations` | `get_vaccination_view` summary CTE returns `countries_with_data`, `met_target_count`, `average_coverage`; `vaccinations.html` renders “Regional target summary”. | `RouteTests.test_vaccination_page_accepts_filters`; `QueryTests.test_vaccination_view_filters_and_summarises_in_sql` | Met | Define/document statistic and ensure summary semantics match threshold-filtered results. |
+| L2-A-04 | Distinguish reported coverage values above 100% as anomalies in the UI. | `/vaccinations` | Query emits `target_status='Reported above 100%'`; `vaccinations.html` renders status badge and data-quality note. | `QueryTests.test_vaccination_values_above_100_are_flagged_not_silently_capped` | Met | Preserve anomaly value and visible label through refactor. |
+| L2-B-01 | Provide one economy selection, infection type, year, country-name filter, sort field, and direction controls. | `/infections` | `views.infections` validates economy/infection/year; `infections.html` GET form has all controls; query supports search and safe sort. | `RouteTests.test_infection_page_accepts_filters` | Met | Add malformed and boundary validation assertions and retain selected values. |
+| L2-B-02 | Show one economy's country-level infection results with infection, country, economy, year, cases, population, and cases per 100,000. | `/infections` | `get_infection_by_economy` joins infection, country, economy, and population tables and selects all required columns; detail table in `infections.html`. | `QueryTests.test_infection_view_calculates_rate_and_all_economy_summary`; route test checks “Cases per 100,000”. | Met | Keep required columns and exclude non-positive populations explicitly. |
+| L2-B-03 | Order country results by the selected resultant column and direction using a whitelist. | `/infections` | `_safe_order` maps country/cases/population/rate to SQL aliases; detail query orders by selected expression and country tie-break. | `QueryTests.test_infection_view_calculates_rate_and_all_economy_summary`; whitelist test. | Met | Add route tests for each ordering option and invalid sort fallback. |
+| L2-B-04 | Aggregate the selected infection and year across all economic phases using infection, country, economy, and population data. | `/infections` | `summary_sql` groups by economy and returns total cases, represented population, weighted cases/100k, and country count; template renders all economies. | `QueryTests.test_infection_view_calculates_rate_and_all_economy_summary` | Met | Preserve weighted aggregation and add no-data coverage. |
+| L3-01 | Design analytical pages around sub-dataset SQL queries and keep Python post-processing minimal. | `/vaccination-improvement`, `/infection-benchmark` | Improvement and benchmark functions use CTEs, joins, calculations, ordering, and limiting in SQL; views only split benchmark global/country rows for presentation. | `QueryTests.test_vaccination_improvement_uses_two_year_datasets`; `QueryTests.test_above_global_query_puts_global_row_first` | Met | Keep analytical logic in SQL and document any unavoidable presentation-only processing. |
+| L3-02 | Ensure selected sorting and result limiting are parameterized/whitelisted in analytical results. | `/vaccination-improvement` | `_safe_order` handles improvement sort keys; SQL uses `LIMIT ?`; route validates 3–50 limit. | `QueryTests.test_vaccination_improvement_uses_two_year_datasets`; `RouteTests.test_invalid_improvement_years_show_validation_message` | Partial | Add tests for all sort keys, directions, and limit boundaries. |
+| L3-A-01 | Provide start year, end year, antigen, and result-count controls. | `/vaccination-improvement` | `vaccination_improvement` view parses/validates all four; template GET form exposes controls. | `RouteTests.test_invalid_improvement_years_show_validation_message` | Met | Add valid retained-selection and malformed-value tests. |
+| L3-A-02 | Calculate each comparable country's population-based vaccination rate for both selected years. | `/vaccination-improvement` | `get_vaccination_improvements` CTEs join `Vaccination` to `CountryPopulation`, require positive population, and compute doses/population*100. | `QueryTests.test_vaccination_improvement_uses_two_year_datasets` | Met | Preserve positive-population and both-endpoint comparability rules. |
+| L3-A-03 | Return country, start rate, end rate, rate increase, start year, and end year in the improvement result. | `/vaccination-improvement` | Query currently returns country/rates/improvement but not start/end year fields; template displays country/rates/improvement and headings interpolate years. | No test asserts required year columns. | Partial | Include explicit start/end year columns in SQL output and table. |
+| L3-A-04 | Rank countries by population-based improvement, with selected sorting and bounded result count. | `/vaccination-improvement` | Improvement CTE computes `end_rate - start_rate`, filters positive improvements, whitelisted ORDER BY, parameterized LIMIT. | `QueryTests.test_vaccination_improvement_uses_two_year_datasets` | Met | Add acceptance checks for ranking, alternate sorts, and limit. |
+| L3-B-01 | Provide year and infection-type controls. | `/infection-benchmark` | `views.infection_benchmark` validates infection/year; template GET form exposes both. | Route render and `RouteTests.test_benchmark_page_includes_global_row_first` | Met | Add malformed-input and no-benchmark route coverage. |
+| L3-B-02 | Calculate the weighted global infection rate as total cases divided by total represented population. | `/infection-benchmark` | `get_above_global_infections` CTE `global_rate` computes `SUM(cases)*100000/SUM(population)`; template explains weighted method. | `QueryTests.test_above_global_query_puts_global_row_first` | Met | Preserve weighted (not unweighted) calculation and positive-population rule. |
+| L3-B-03 | Return countries whose infection rate is above the weighted global rate. | `/infection-benchmark` | Benchmark CTE cross-joins `global_rate` and filters `cr.cases_per_100k > gr.cases_per_100k`. | `QueryTests.test_above_global_query_puts_global_row_first` | Met | Add explicit strict-above and empty benchmark assertions. |
+| L3-B-04 | Display the global benchmark row first, followed by above-global countries sorted by rate. | `/infection-benchmark` | SQL orders `row_order` first then rate descending; view separates first row for template presentation; `infection_benchmark.html` renders global panel/table before country rows. | `QueryTests.test_above_global_query_puts_global_row_first`; `RouteTests.test_benchmark_page_includes_global_row_first` | Met | Retain global-first ordering and accessible empty state. |
+
+## Route inventory
+
+| Route | View function | Template | Primary requirement groups | Current evidence |
+|---|---|---|---|---|
+| `/` | `pages.home` | `home.html` | L1-A | Snapshot and latest infection totals loaded from SQL. |
+| `/mission` | `pages.mission` | `mission.html` | L1-B | Personas/team loaded from project tables. |
+| `/vaccinations` | `pages.vaccinations` | `vaccinations.html` | L2, L2-A | GET filters and SQL detail/summary. |
+| `/infections` | `pages.infections` | `infections.html` | L2, L2-B | GET filters, country detail, all-economy summary. |
+| `/vaccination-improvement` | `pages.vaccination_improvement` | `vaccination_improvement.html` | L3, L3-A | Two-year SQL ranking and bounded limit. |
+| `/infection-benchmark` | `pages.infection_benchmark` | `infection_benchmark.html` | L3, L3-B | Weighted global benchmark and above-global rows. |
+
+## Template inventory
+
+| Template | Route(s) | Relevant evidence |
+|---|---|---|
+| `base.html` | all | Shared navigation, skip link, stylesheet, branded shell. |
+| `home.html` | `/` | Hero/topics, exactly four fact cards, exploration paths, latest infection chart. |
+| `mission.html` | `/mission` | Perspective, usage guidance, SQLite personas, team section. |
+| `vaccinations.html` | `/vaccinations` | Antigen/year/country/region/sort/direction GET form; regional summary; anomaly/status and empty state. |
+| `infections.html` | `/infections` | Economy/infection/year/search/sort/direction GET form; detail and all-economy summary tables. |
+| `vaccination_improvement.html` | `/vaccination-improvement` | Start/end year, antigen, limit, sort/direction form and ranked results. |
+| `infection_benchmark.html` | `/infection-benchmark` | Infection/year form, global benchmark first, above-global country table and methodology. |
+
+## Query inventory
+
+| Query/function | SQL responsibilities | Used by |
+|---|---|---|
+| `get_snapshot` | Dataset min/max years and entity counts. | `/` |
+| `get_latest_infection_totals` | Latest-year infection aggregation and relative widths. | `/` |
+| `get_reference_data` | Database-derived choices for all filters. | `/vaccinations`, `/infections`, `/vaccination-improvement`, `/infection-benchmark` |
+| `get_personas` / `get_team_members` | Read project persona/team rows. | `/mission` |
+| `get_vaccination_view` | Parameterized joins, coverage fallback, anomaly status, sorting, detail limit, regional aggregation. | `/vaccinations` |
+| `get_infection_by_economy` | Parameterized joins, population-adjusted rate, country search/sort/limit, all-economy weighted summaries. | `/infections` |
+| `get_vaccination_improvements` | Two endpoint CTEs, population rates, improvement calculation, positive-only filter, sort, limit. | `/vaccination-improvement` |
+| `get_above_global_infections` | Country rates, weighted global rate, strict-above filter, global-first ordering. | `/infection-benchmark` |
+
+## Test inventory
+
+| Test module | Coverage relevant to matrix |
+|---|---|
+| `tests/test_queries.py` | Snapshot counts; idempotent project tables; database-derived mission rows; vaccination filters/summary/anomalies; infection rates and economy summary; two-year improvement ranking/limit; global benchmark ordering; sort whitelist/injection safety. |
+| `tests/test_routes.py` | All six routes; vaccination filters and summary marker; infection filters and rate column; improvement year validation; benchmark global-first rendering; branded 404. |
+
+## Audit notes and next checks
+
+- The baseline currently has 15 tests and is the required pre-refactor gate.
+- Team identity remains blocked despite placeholder rows existing: exact names and student-number mapping were not supplied.
+- Priority gaps identified for later tasks are the vaccination >=90% detail-result rule, explicit four-fact assertion, malformed integer handling, additional empty/no-data tests, and explicit improvement year columns.
