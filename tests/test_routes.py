@@ -201,6 +201,39 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"MCV2", response.data)
         self.assertIn(b"Regional target summary", response.data)
 
+    def test_vaccination_country_filter_shows_target_metrics_and_anomaly(self) -> None:
+        response = self.client.get(
+            "/vaccinations?antigen=MCV2&year=2010&country=KNA"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"1 country meeting target", response.data)
+        self.assertIn(b"Countries meeting 90% target", response.data)
+        self.assertIn(b"Reported above 100%", response.data)
+
+    def test_vaccination_region_filter_limits_country_results(self) -> None:
+        response = self.client.get(
+            "/vaccinations?antigen=MCV2&year=2010&region=TLA"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"9 countries meeting target", response.data)
+        self.assertIn(b"Regional target summary", response.data)
+        self.assertIn(b"Reported above 100%", response.data)
+
+    def test_vaccination_country_and_region_filters_work_together(self) -> None:
+        response = self.client.get(
+            "/vaccinations?antigen=MCV2&year=2010&country=KNA&region=TLA"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"MCV2 in 2010", response.data)
+        self.assertIn(b"1 country meeting target", response.data)
+        self.assertIn(b"Regional target summary", response.data)
+        self.assertEqual(response.data.count(b'<div class="table-shell" tabindex="0">'), 2)
+        self.assertIn(b"Regional coverage target results", response.data)
+        self.assertIn(b"Countries meeting the 90% coverage target", response.data)
+
     def test_infection_page_accepts_filters(self) -> None:
         response = self.client.get(
             "/infections?economy=3&infection=MEA&year=2022&sort=rate&direction=desc"

@@ -81,6 +81,24 @@ class QueryTests(unittest.TestCase):
         self.assertEqual(coverages, sorted(coverages, reverse=True))
         self.assertTrue(all(row["met_target_count"] >= 0 for row in result["summary"]))
 
+    def test_vaccination_country_rows_only_include_countries_meeting_target(self) -> None:
+        result = get_vaccination_view(
+            self.db,
+            antigen="MCV2",
+            year=2010,
+            country="",
+            region="",
+            sort_by="coverage",
+            direction="desc",
+        )
+
+        self.assertGreater(len(result["rows"]), 0)
+        self.assertTrue(all(row["coverage"] >= 90 for row in result["rows"]))
+        self.assertGreater(result["metrics"]["countries_with_data"], 0)
+        self.assertEqual(
+            result["metrics"]["countries_meeting_target"], len(result["rows"])
+        )
+
     def test_vaccination_values_above_100_are_flagged_not_silently_capped(self) -> None:
         result = get_vaccination_view(
             self.db,
