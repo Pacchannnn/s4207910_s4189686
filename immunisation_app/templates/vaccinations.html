@@ -46,6 +46,23 @@
   {% include "components/validation_notice.html" %}
 </div>
 
+{% if not errors %}
+<section class="section compact-section" aria-labelledby="vaccination-context-title">
+  <div class="content-shell">
+    <div class="section-heading results-heading">
+      <p class="eyebrow">Selected coverage context</p>
+      <h2 id="vaccination-context-title">{{ filters.antigen }} in {{ filters.year }}</h2>
+    </div>
+    <div class="metric-strip">
+      <article><span>Countries with data</span><strong>{{ metrics.countries_with_data }}</strong></article>
+      <article><span>Countries meeting 90% target</span><strong>{{ metrics.countries_meeting_target }}</strong></article>
+      <article><span>Average coverage</span><strong>{{ metrics.average_coverage|number(2) }}{% if metrics.average_coverage is not none %}%{% endif %}</strong></article>
+      <article><span>Reported above 100%</span><strong>{{ metrics.anomalous_coverage_count }}</strong></article>
+    </div>
+  </div>
+</section>
+{% endif %}
+
 <section class="section compact-section" aria-labelledby="regional-title">
   <div class="content-shell">
     <div class="section-heading split-heading results-heading">
@@ -53,15 +70,14 @@
       <p>Countries with a usable coverage value of at least 90% for the selected antigen and year.</p>
     </div>
     {% if summary %}
-    <div class="summary-grid">
-      {% for item in summary %}
-      <article class="summary-card">
-        <div class="summary-value">{{ item.met_target_count }}<span>/ {{ item.countries_with_data }}</span></div>
-        <h3>{{ item.region_name }}</h3>
-        <p>Average coverage: {{ item.average_coverage|number(2) }}%</p>
-      </article>
-      {% endfor %}
-    </div>
+    <div class="table-shell" tabindex="0"><table>
+      <caption>Regional coverage target results for {{ filters.antigen }} in {{ filters.year }}</caption>
+      <thead><tr><th>Antigen</th><th>Year</th><th>Region</th><th class="numeric">Countries with data</th><th class="numeric">Countries meeting 90%</th><th class="numeric">Average coverage</th></tr></thead>
+      <tbody>{% for item in summary %}<tr>
+        <td><strong>{{ item.antigen }}</strong></td><td>{{ item.year }}</td><td>{{ item.region_name }}</td>
+        <td class="numeric">{{ item.countries_with_data }}</td><td class="numeric">{{ item.met_target_count }}</td><td class="numeric">{{ item.average_coverage|number(2) }}{% if item.average_coverage is not none %}%{% endif %}</td>
+      </tr>{% endfor %}</tbody>
+    </table></div>
     {% elif not errors %}<div class="empty-state"><h3>No regional data</h3><p>Try another antigen, year or location.</p></div>{% endif %}
   </div>
 </section>
@@ -69,11 +85,12 @@
 <section class="section section-rule compact-section" aria-labelledby="country-results-title">
   <div class="content-shell">
     <div class="section-heading split-heading results-heading">
-      <div><p class="eyebrow">Country detail</p><h2 id="country-results-title">{{ rows|length }} matching records</h2></div>
-      <p>Blank coverage values fall back to doses divided by target population. Zero targets are not divided.</p>
+      <div><p class="eyebrow">Country detail</p><h2 id="country-results-title">{{ rows|length }} {{ 'country' if rows|length == 1 else 'countries' }} meeting target</h2></div>
+      <p>Only countries with usable coverage at or above the project's 90% target are shown.</p>
     </div>
     {% if rows %}
     <div class="table-shell" tabindex="0"><table>
+      <caption>Countries meeting the 90% coverage target for {{ filters.antigen }} in {{ filters.year }}</caption>
       <thead><tr><th>Antigen</th><th>Year</th><th>Country</th><th>Region</th><th class="numeric">Doses</th><th class="numeric">Target</th><th class="numeric">Coverage</th><th>Status</th></tr></thead>
       <tbody>{% for row in rows %}<tr>
         <td><strong>{{ row.antigen }}</strong></td><td>{{ row.year }}</td><td>{{ row.country }}</td><td>{{ row.region_name }}</td>
@@ -82,6 +99,15 @@
       </tr>{% endfor %}</tbody>
     </table></div>
     {% elif not errors %}<div class="empty-state"><h3>No matching records</h3><p>Remove a location filter or choose another antigen and year.</p></div>{% endif %}
+  </div>
+</section>
+
+<section class="section compact-section" aria-labelledby="vaccination-quality-title">
+  <div class="content-shell">
+    <aside class="methodology-band" aria-labelledby="vaccination-quality-title">
+      <div><p class="eyebrow light">Data quality</p><h2 id="vaccination-quality-title">How coverage values are handled</h2></div>
+      <p>When reported coverage is missing, coverage falls back to doses divided by target population. Missing doses and zero or invalid targets produce no usable fallback and are excluded. Values above 100% are retained and flagged as “Reported above 100%”, not capped.</p>
+    </aside>
   </div>
 </section>
 {% endblock %}

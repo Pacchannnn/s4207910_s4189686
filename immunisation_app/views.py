@@ -75,7 +75,16 @@ def vaccinations():
     if not valid_scalar(direction, {"asc", "desc"}):
         errors.append("Choose a valid sort direction.")
 
-    result = {"rows": [], "summary": []}
+    result = {
+        "rows": [],
+        "summary": [],
+        "metrics": {
+            "countries_with_data": 0,
+            "countries_meeting_target": 0,
+            "average_coverage": None,
+            "anomalous_coverage_count": 0,
+        },
+    }
     if not errors:
         result = get_vaccination_view(
             database,
@@ -102,6 +111,7 @@ def vaccinations():
         errors=errors,
         rows=result["rows"],
         summary=result["summary"],
+        metrics=result["metrics"],
     )
 
 

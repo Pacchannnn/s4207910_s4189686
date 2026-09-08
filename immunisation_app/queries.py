@@ -118,7 +118,7 @@ def get_vaccination_view(
     region: str,
     sort_by: str,
     direction: str,
-) -> dict[str, list[dict[str, Any]]]:
+) -> dict[str, Any]:
     order_column, order_direction = _safe_order(
         sort_by,
         direction,
@@ -147,7 +147,7 @@ def get_vaccination_view(
         )
     """
 
-    detail_sql = f"""
+    filtered_cte = f"""
         WITH filtered AS (
             SELECT
                 v.antigen,
@@ -164,6 +164,9 @@ def get_vaccination_view(
             JOIN Region AS r ON r.RegionID = c.region
             WHERE {where_clause}
         )
+    """
+    detail_sql = f"""
+        {filtered_cte}
         SELECT
             antigen,
             year,
@@ -181,34 +184,41 @@ def get_vaccination_view(
                 ELSE 'Below target'
             END AS target_status
         FROM filtered
+        WHERE coverage >= 90
         ORDER BY {order_column} {order_direction}, country ASC
         LIMIT 500
     """
     summary_sql = f"""
-        WITH filtered AS (
-            SELECT
-                r.RegionID AS region_id,
-                r.region AS region_name,
-                c.CountryID AS country_id,
-                {coverage_expression} AS coverage
-            FROM Vaccination AS v
-            JOIN Country AS c ON c.CountryID = v.country
-            JOIN Region AS r ON r.RegionID = c.region
-            WHERE {where_clause}
-        )
+        {filtered_cte}
         SELECT
+            antigen,
+            year,
             region_id,
             region_name,
-            COUNT(DISTINCT country_id) AS countries_with_data,
+            COUNT(DISTINCT CASE WHEN coverage IS NOT NULL THEN country_id END)
+                AS countries_with_data,
             COUNT(DISTINCT CASE WHEN coverage >= 90 THEN country_id END) AS met_target_count,
             ROUND(AVG(coverage), 2) AS average_coverage
         FROM filtered
-        GROUP BY region_id, region_name
+        GROUP BY antigen, year, region_id, region_name
         ORDER BY met_target_count DESC, region_name ASC
+    """
+    metrics_sql = f"""
+        {filtered_cte}
+        SELECT
+            COUNT(DISTINCT CASE WHEN coverage IS NOT NULL THEN country_id END)
+                AS countries_with_data,
+            COUNT(DISTINCT CASE WHEN coverage >= 90 THEN country_id END)
+                AS countries_meeting_target,
+            COUNT(DISTINCT CASE WHEN coverage > 100 THEN country_id END)
+                AS anomalous_coverage_count,
+            ROUND(AVG(coverage), 2) AS average_coverage
+        FROM filtered
     """
     return {
         "rows": _rows(db.execute(detail_sql, parameters)),
         "summary": _rows(db.execute(summary_sql, parameters)),
+        "metrics": dict(db.execute(metrics_sql, parameters).fetchone()),
     }
 
 
