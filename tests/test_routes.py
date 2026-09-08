@@ -255,6 +255,10 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b'value="cases" selected', response.data)
         self.assertIn(b'value="asc" selected', response.data)
         self.assertIn(b"Selected economy metrics", response.data)
+        self.assertIn(
+            b"Selected economy metrics: Lower Middle Income - Measles in 2022",
+            response.data,
+        )
         self.assertIn(b"All-economy infection summary", response.data)
         self.assertIn(b"Country infection detail", response.data)
         self.assertIn(b"How to read this view", response.data)
