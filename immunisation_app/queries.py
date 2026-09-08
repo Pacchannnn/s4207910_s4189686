@@ -252,7 +252,6 @@ def get_infection_by_economy(
     detail_sql = f"""
         WITH rates AS (
             SELECT
-                c.CountryID AS country_id,
                 c.name AS country,
                 e.economyID AS economy_id,
                 e.phase AS economy,
@@ -274,7 +273,6 @@ def get_infection_by_economy(
               {search_filter}
         )
         SELECT
-            country_id,
             country,
             economy_id,
             economy,

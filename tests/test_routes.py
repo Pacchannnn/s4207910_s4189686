@@ -242,12 +242,32 @@ class RouteTests(unittest.TestCase):
 
     def test_infection_page_accepts_filters(self) -> None:
         response = self.client.get(
-            "/infections?economy=3&infection=MEA&year=2022&sort=rate&direction=desc"
+            "/infections?economy=3&infection=MEA&year=2022&search=Zimbabwe&sort=cases&direction=asc"
         )
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Cases per 100,000", response.data)
         self.assertIn(b"Measles", response.data)
+        self.assertIn(b'value="3" selected', response.data)
+        self.assertIn(b'value="MEA" selected', response.data)
+        self.assertIn(b'value="2022" selected', response.data)
+        self.assertIn(b'value="Zimbabwe"', response.data)
+        self.assertIn(b'value="cases" selected', response.data)
+        self.assertIn(b'value="asc" selected', response.data)
+        self.assertIn(b"Selected economy metrics", response.data)
+        self.assertIn(b"All-economy infection summary", response.data)
+        self.assertIn(b"Country infection detail", response.data)
+        self.assertIn(b"How to read this view", response.data)
+        self.assertEqual(response.data.count(b"<caption>"), 2)
+        self.assertGreaterEqual(response.data.count(b'scope="col"'), 12)
+
+    def test_infection_page_shows_an_empty_state_for_a_nonmatching_search(self) -> None:
+        response = self.client.get(
+            "/infections?economy=3&infection=MEA&year=2022&search=no-such-country"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"No matching countries", response.data)
 
     def test_malformed_year_and_sort_show_validation_messages(self) -> None:
         response = self.client.get(
