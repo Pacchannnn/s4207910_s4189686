@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% import "macros.html" as ui %}
+{% block content %}
+{{ ui.errors(error) }}
+<div class="page-stage">
+<section class="page-intro"><p class="eyebrow">3B / A global point of comparison</p><h1>Countries above the global infection rate</h1><p class="lead">Compare each country's reported infection rate with a population-weighted benchmark for the same disease and year.</p></section>
+<form class="filter-panel" method="get" action="{{ url_for('pages.benchmark') }}"><div class="panel-heading"><h2>Choose a benchmark</h2><span>Reported cases per 100,000 people</span></div><div class="form-grid">
+{{ ui.select('infection','Infection type',options.infections,values) }}{{ ui.select('year','Year',options.years,values) }}{{ ui.sorting(sorts,values) }}
+</div>{{ ui.actions('pages.benchmark') }}</form>
+</div>
+{% if result %}
+<section class="results-section"><div class="section-heading"><h2>Global benchmark &amp; countries above it</h2><span>{{ result.rows|length }} above benchmark · {{ values.year }}</span></div>
+{% if result.global.rate is not none %}
+<div class="table-scroll" role="region" aria-label="Global infection benchmark and above-average countries" tabindex="0"><table><caption>Global = total matched cases ÷ total matched population × 100,000. The benchmark always appears first.</caption><thead><tr><th scope="col">Country / territory</th><th scope="col">Infection type</th><th scope="col">Year</th><th scope="col" class="numeric">Reported cases</th><th scope="col" class="numeric">Population (people)</th><th scope="col" class="numeric">Cases per 100,000</th><th scope="col" class="numeric">Above benchmark (per 100,000)</th></tr></thead><tbody>
+<tr class="global-row"><th scope="row">Global <span class="small">Available dataset</span></th><td>{% for item in options.infections %}{% if item.value==values.infection %}{{ item.label }}{% endif %}{% endfor %}</td><td>{{ values.year }}</td><td class="numeric">{{ result.global.cases|num }}</td><td class="numeric">{{ result.global.population|num }}</td><td class="numeric">{{ result.global.rate|num(6) }}</td><td class="numeric">Reference</td></tr>
+{% for row in result.rows %}<tr><th scope="row">{{ row.country }}</th><td>{{ row.infection }}</td><td>{{ row.year }}</td><td class="numeric">{{ row.cases|num }}</td><td class="numeric">{{ row.population|num }}</td><td class="numeric emphasis">{{ row.rate|num(6) }}</td><td class="numeric">+{{ row.excess|num(6) }}</td></tr>{% endfor %}</tbody></table></div>
+{% if not result.rows %}<div class="empty-state"><strong>No matching countries above this benchmark</strong><p>Comparable country rates are equal to or below the global rate.</p></div>{% endif %}
+{% else %}{{ ui.empty() }}<p>A global rate cannot be calculated without valid cases and matching population.</p>{% endif %}
+<div class="note"><strong>What “global” means here</strong><p>The benchmark includes {{ result.global.countries }} countries and territories with numeric case data and positive population for this year. {{ result.excluded }} reported records are excluded because their cases, population or country match cannot support a rate.</p><p>Every comparable country contributes to the global benchmark, including countries with reported zero cases and those without an economic classification. This is not an unweighted average of country rates. Comparisons use unrounded values; displayed figures are rounded.</p></div>
+{{ ui.source_note() }}</section>
+{% endif %}{% endblock %}

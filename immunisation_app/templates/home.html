@@ -1,102 +1,50 @@
 {% extends "base.html" %}
-{% block title %}Global Immunisation Data | Immunisation Lens{% endblock %}
 {% block content %}
-<section class="hero">
-  <div class="hero-shade" aria-hidden="true"></div>
-  <div class="content-shell hero-content">
-    <p class="eyebrow light">Preventable infectious diseases</p>
-    <h1>Global immunisation data, made explorable.</h1>
-    <p class="hero-copy">Compare vaccination coverage, infection rates and long-term change across countries without losing the context behind the numbers.</p>
-    <div class="button-row">
-      <a class="button primary" href="{{ url_for('pages.vaccinations') }}">Explore vaccination data</a>
-      <a class="button ghost" href="{{ url_for('pages.mission') }}">Read our mission</a>
-    </div>
+<section class="overview-intro">
+  <div class="hero-inner">
+    <p class="eyebrow">Global immunisation data &middot; 2000&ndash;2024</p>
+    <h1>{{ _("Vaccination & Disease Data") }}</h1>
+    <p class="lead">Explore coverage, reported infections and population-based comparisons across countries, regions and economic groups.</p>
+    <div class="hero-actions"><a class="button button-light" href="{{ url_for('pages.vaccinations') }}">Explore vaccination <span aria-hidden="true">&rarr;</span></a><a class="text-link hero-link" href="{{ url_for('pages.infections') }}">Compare infections &rarr;</a></div>
   </div>
 </section>
-
-<section class="section snapshot-section" aria-labelledby="snapshot-title">
-  <div class="content-shell">
-    <div class="section-heading split-heading">
-      <div>
-        <p class="eyebrow">Database snapshot</p>
-        <h2 id="snapshot-title">Four facts about the dataset</h2>
-      </div>
-      <p>Every value below is queried from SQLite when this page loads.</p>
-    </div>
-    <div class="fact-grid">
-      <article class="fact-card accent-red">
-        <span class="fact-value">{{ snapshot.first_year }}-{{ snapshot.last_year }}</span>
-        <h3>Reporting period</h3>
-        <p>Twenty-five annual reporting points for trend comparison.</p>
-      </article>
-      <article class="fact-card accent-teal">
-        <span class="fact-value">{{ snapshot.country_count }}</span>
-        <h3>Countries and areas</h3>
-        <p>Coverage spans seven geographic regions.</p>
-      </article>
-      <article class="fact-card accent-gold">
-        <span class="fact-value">{{ snapshot.antigen_count }}</span>
-        <h3>Antigen types</h3>
-        <p>Comparable vaccine dose and target records.</p>
-      </article>
-      <article class="fact-card accent-blue">
-        <span class="fact-value">{{ snapshot.infection_count }}</span>
-        <h3>Infection types</h3>
-        <p>Measles, pertussis and rubella case data.</p>
-      </article>
-    </div>
+<section aria-labelledby="snapshot">
+  <div class="section-heading"><h2 id="snapshot">The dataset at a glance</h2><span>Scope of the supplied database</span></div>
+  <div class="facts-grid">
+    <article class="fact-card"><span class="fact-label">Countries and territories</span><strong>{{ facts.countries|num }}</strong><p>Listed in the country reference table.</p></article>
+    <article class="fact-card"><span class="fact-label">Antigen types tracked</span><strong>{{ facts.antigens|num }}</strong><p>Vaccine and dose categories.</p></article>
+    <article class="fact-card"><span class="fact-label">Vaccination records</span><strong>{{ facts.vaccination_records|num }}</strong><p>Records, including incomplete reports.</p></article>
+    <article class="fact-card"><span class="fact-label">Data timeframe</span><strong class="timeframe">{{ facts.first_year if facts.first_year is not none else 'Not available' }}&ndash;{{ facts.last_year if facts.last_year is not none else 'Not available' }}</strong><p>Year range in the database.</p></article>
   </div>
 </section>
-
-<section class="section band-dark" aria-labelledby="topics-title">
-  <div class="content-shell">
-    <div class="section-heading split-heading light-heading">
-      <div>
-        <p class="eyebrow light">Explore the evidence</p>
-        <h2 id="topics-title">Move from overview to analysis</h2>
-      </div>
-      <p>Each view keeps calculations in SQL and labels rates with their denominator.</p>
+<section class="section-space" aria-labelledby="inside">
+  <div class="section-heading"><h2 id="inside">What is inside the dataset?</h2><a href="{{ url_for('pages.mission') }}#data-notes">How to read these figures</a></div>
+  <dl class="supporting-stats">
+    <div><dt>Total vaccination doses</dt><dd>{{ facts.total_doses|num }}</dd></div>
+    <div><dt>Total reported disease cases</dt><dd>{{ facts.total_cases|num }}</dd></div>
+    <div><dt>Infection records</dt><dd>{{ facts.infection_records|num }}</dd></div>
+    <div><dt>Infection types</dt><dd>{{ facts.infections|num }}</dd></div>
+  </dl>
+  <p class="source-note">Totals sum numeric source records across all recorded years. Doses and disease cases are not counts of unique people. Incomplete and unmatched country records remain part of these raw dataset totals; country comparisons require valid matching records. Doses are rounded to the nearest whole dose for display.</p>
+</section>
+<section class="section-space disease-section" aria-labelledby="diseases">
+  <div><p class="eyebrow">Reported disease burden</p><h2 id="diseases">{{ _("Reported cases by disease") }}</h2><p>Compare totals across the recorded years. The bars show case counts, not population-adjusted infection rates.</p><a class="text-link" href="{{ url_for('pages.benchmark') }}">Compare population-adjusted rates &rarr;</a></div>
+  <div class="chart-list" role="group" aria-label="Total reported cases by disease">
+    {% for row in diseases %}
+    <div class="chart-row"><div class="chart-label"><strong>{{ row.disease }}</strong><span>{{ row.cases|num }} cases</span></div>
+      {% if row.cases is not none and facts.total_cases %}<meter min="0" max="{{ facts.total_cases }}" value="{{ row.cases }}" aria-label="{{ row.disease }} share of total reported cases">{{ row.cases|num }}</meter>{% endif %}
+      <small>{{ row.first_year if row.first_year is not none else 'No records' }}{% if row.last_year is not none %}&ndash;{{ row.last_year }}{% endif %}</small>
     </div>
-    <div class="path-grid">
-      <a class="path-item" href="{{ url_for('pages.vaccinations') }}">
-        <span class="path-number">01</span>
-        <h3>Coverage by place</h3>
-        <p>Filter an antigen and year, then compare countries and regional target attainment.</p>
-        <span class="text-link">Open vaccination explorer</span>
-      </a>
-      <a class="path-item" href="{{ url_for('pages.infections') }}">
-        <span class="path-number">02</span>
-        <h3>Cases by economy</h3>
-        <p>Compare reported cases and population-adjusted rates across economic groups.</p>
-        <span class="text-link">Open infection explorer</span>
-      </a>
-      <a class="path-item" href="{{ url_for('pages.infection_benchmark') }}">
-        <span class="path-number">03</span>
-        <h3>Global benchmark</h3>
-        <p>See the weighted global rate and countries reporting rates above it.</p>
-        <span class="text-link">Open deep analysis</span>
-      </a>
-    </div>
+    {% endfor %}
   </div>
 </section>
-
-<section class="section" aria-labelledby="latest-title">
-  <div class="content-shell two-column-section">
-    <div class="section-heading compact-heading">
-      <p class="eyebrow">Latest reporting year</p>
-      <h2 id="latest-title">Reported cases by infection type</h2>
-      <p>Relative bar lengths compare totals within {{ snapshot.last_year }}. Case counts are not adjusted for population in this chart.</p>
-      <a class="text-link dark-link" href="{{ url_for('pages.infections') }}">Compare rates per 100,000</a>
-    </div>
-    <div class="bar-chart" aria-label="Reported cases by infection type in latest year">
-      {% for item in infection_totals %}
-      <div class="bar-row">
-        <div class="bar-label"><span>{{ item.description }}</span><strong>{{ item.total_cases|number }}</strong></div>
-        <div class="bar-track"><span style="width: {{ item.relative_width }}%"></span></div>
-      </div>
-      {% endfor %}
-    </div>
+<section class="explore-section" aria-labelledby="explore">
+  <div class="section-heading"><h2 id="explore">{{ _("Explore the data") }}</h2></div>
+  <div class="feature-grid">
+    <a class="feature-card" href="{{ url_for('pages.vaccinations') }}"><span class="card-index">02 / Geography</span><h3>Country &amp; region</h3><p>Coverage, regional summaries and target comparisons.</p><span class="card-link">View vaccination &rarr;</span></a>
+    <a class="feature-card" href="{{ url_for('pages.infections') }}"><span class="card-index">02 / Economic groups</span><h3>Infection patterns</h3><p>Cases and population across economic groups.</p><span class="card-link">View infections &rarr;</span></a>
+    <a class="feature-card" href="{{ url_for('pages.improvements') }}"><span class="card-index">03 / Change over time</span><h3>Vaccination improvement</h3><p>Largest increases in doses relative to population.</p><span class="card-link">Compare years &rarr;</span></a>
+    <a class="feature-card" href="{{ url_for('pages.benchmark') }}"><span class="card-index">03 / Global perspective</span><h3>Above the benchmark</h3><p>Countries exceeding the global reported infection rate.</p><span class="card-link">Compare rates &rarr;</span></a>
   </div>
 </section>
 {% endblock %}
-

@@ -1,0 +1,28 @@
+{% macro select(name,label,items,values,empty_label=none) -%}
+<div class="field">
+  <label for="{{ name }}">{{ _(label) }}</label>
+  <select name="{{ name }}" id="{{ name }}"{% if empty_label is none %} required{% endif %}>
+  {% if empty_label is not none %}<option value=""{% if values.get(name,'')|string == '' %} selected{% endif %}>{{ _(empty_label) }}</option>{% endif %}
+  {% for item in items %}<option value="{{ item.value }}"{% if values.get(name,'')|string == item.value|string %} selected{% endif %}>{{ _(item.label) }}</option>{% endfor %}
+  </select>
+</div>
+{%- endmacro %}
+{% macro number(name,label,values,minimum=0,maximum=1000000000000000,step='any',required=false) -%}
+<div class="field"><label for="{{ name }}">{{ _(label) }}</label><input type="number" name="{{ name }}" id="{{ name }}" value="{{ values.get(name,'') }}" min="{{ minimum }}" max="{{ maximum }}" step="{{ step }}"{% if required %} required{% endif %}></div>
+{%- endmacro %}
+{% macro sorting(sorts,values) -%}
+<div class="field"><label for="sort">Sort results by</label><select id="sort" name="sort">{% for key,label in sorts.items() %}<option value="{{ key }}"{% if values.sort==key %} selected{% endif %}>{{ _(label) }}</option>{% endfor %}</select></div>
+<div class="field"><label for="direction">Order</label><select id="direction" name="direction"><option value="desc"{% if values.direction=='desc' %} selected{% endif %}>Descending</option><option value="asc"{% if values.direction=='asc' %} selected{% endif %}>Ascending</option></select></div>
+{%- endmacro %}
+{% macro actions(endpoint) -%}
+<div class="form-actions"><button type="submit">Apply filters <span aria-hidden="true">→</span></button><a class="reset-link" href="{{ url_for(endpoint) }}">Reset filters</a></div>
+{%- endmacro %}
+{% macro errors(error) -%}
+{% if error %}<div class="error-box" role="alert"><h2>Check your filters</h2><p>{{ _(error) }}</p><p>Correct the selection below or use Reset filters.</p></div>{% endif %}
+{%- endmacro %}
+{% macro empty() -%}
+<div class="empty-state"><strong>No matching results</strong><p>Try another year, a broader selection or a lower minimum. Missing data is not the same as zero.</p></div>
+{%- endmacro %}
+{% macro source_note() -%}
+<p class="source-note">Source: supplied immunisation database. Calculations use available records only. <a href="{{ url_for('pages.mission') }}#data-notes">Read the data notes</a>.</p>
+{%- endmacro %}

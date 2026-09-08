@@ -1,16 +1,8 @@
-from __future__ import annotations
-
+"""Run the local data explorer with python app.py."""
 import os
-
-from waitress import serve
-
 from immunisation_app import create_app
-
 
 app = create_app()
 
-
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", "5000"))
-    serve(app, host="0.0.0.0", port=port)
-
+    app.run(host="127.0.0.1", port=int(os.environ.get("PORT", "5067")), debug=False)

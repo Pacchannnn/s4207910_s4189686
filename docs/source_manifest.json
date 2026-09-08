@@ -1,0 +1,41 @@
+{
+  "source_file_sha256": "9be08571ac117f8fba50b8173e1738ba15e72596d95f0130e50c9e7ce8e1415a",
+  "tables": {
+    "Antigen": {
+      "rows": 5,
+      "sha256": "25cef4cb6f6b8c5167ea7442efa28e82f254f1be0dff5e99ce0131374b84f92a"
+    },
+    "Country": {
+      "rows": 217,
+      "sha256": "030f55dfd295e6c402c4b9a4b33d4479c337647452f3b99f02fed22536dc7634"
+    },
+    "CountryPopulation": {
+      "rows": 5425,
+      "sha256": "a8230f1be6ecfc7ce67a3929bf8e36b1fb900a138924043d1e7d9782a20712e8"
+    },
+    "Economy": {
+      "rows": 4,
+      "sha256": "5a2a05b96a464a05b13d4330aca6952e046c87b0a835aa6a5afbd9e5d93358fb"
+    },
+    "InfectionData": {
+      "rows": 15525,
+      "sha256": "6044ae93a2d094f7810124f9bd3124756537119bc998f776b869f64fe1d8710b"
+    },
+    "Infection_Type": {
+      "rows": 3,
+      "sha256": "b7b72754ffc7d047ffc68886df2f747994f5e27c6d2ea7b29fecf0db9320496a"
+    },
+    "Region": {
+      "rows": 7,
+      "sha256": "d736d9cf8c1156049da337d98db97a7225f47b55c536ecea761aac013e8e11a8"
+    },
+    "Vaccination": {
+      "rows": 24211,
+      "sha256": "0c1a8b58ec0459fb7d075563922b6c8b77f327a27fc7b1f6df6af1dade75d864"
+    },
+    "YearDate": {
+      "rows": 25,
+      "sha256": "a1858ad6f92d9f847f920a6299c4c53631411784184eeff2376a57fac2a63bd1"
+    }
+  }
+}
