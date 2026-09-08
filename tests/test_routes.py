@@ -225,6 +225,9 @@ class RouteTests(unittest.TestCase):
         response = self.client.get(
             "/vaccinations?antigen=MCV2&year=2010&country=KNA&region=TLA"
         )
+        incompatible_response = self.client.get(
+            "/vaccinations?antigen=MCV2&year=2010&country=KNA&region=TEA"
+        )
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"MCV2 in 2010", response.data)
@@ -233,6 +236,9 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(response.data.count(b'<div class="table-shell" tabindex="0">'), 2)
         self.assertIn(b"Regional coverage target results", response.data)
         self.assertIn(b"Countries meeting the 90% coverage target", response.data)
+        self.assertEqual(incompatible_response.status_code, 200)
+        self.assertIn(b"0 countries meeting target", incompatible_response.data)
+        self.assertIn(b"No regional data", incompatible_response.data)
 
     def test_infection_page_accepts_filters(self) -> None:
         response = self.client.get(
