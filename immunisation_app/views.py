@@ -14,7 +14,7 @@ from .queries import (
     get_vaccination_improvements,
     get_vaccination_view,
 )
-from .validation import as_int, valid_choice
+from .validation import parse_int, valid_choice, valid_scalar
 
 
 pages = Blueprint("pages", __name__)
@@ -49,13 +49,17 @@ def vaccinations():
     database = get_db()
     reference = get_reference_data(database)
     antigen = request.args.get("antigen", "MCV1")
-    year = as_int(request.args.get("year"), reference["years"][0]["value"])
+    year, year_error = parse_int(
+        request.args.get("year"), reference["years"][0]["value"], "Year"
+    )
     country = request.args.get("country", "")
     region = request.args.get("region", "")
     sort_by = request.args.get("sort", "coverage")
     direction = request.args.get("direction", "desc")
     errors: list[str] = []
 
+    if year_error:
+        errors.append(year_error)
     if not valid_choice(antigen, reference["antigens"]):
         errors.append("Choose a valid antigen.")
     if not valid_choice(year, reference["years"], "value"):
@@ -64,6 +68,12 @@ def vaccinations():
         errors.append("Choose a valid country.")
     if region and not valid_choice(region, reference["regions"]):
         errors.append("Choose a valid region.")
+    if not valid_scalar(
+        sort_by, {"coverage", "country", "region", "doses", "target"}
+    ):
+        errors.append("Choose a valid sort field.")
+    if not valid_scalar(direction, {"asc", "desc"}):
+        errors.append("Choose a valid sort direction.")
 
     result = {"rows": [], "summary": []}
     if not errors:
@@ -99,20 +109,34 @@ def vaccinations():
 def infections():
     database = get_db()
     reference = get_reference_data(database)
-    economy = as_int(request.args.get("economy"), reference["economies"][0]["id"])
+    economy, economy_error = parse_int(
+        request.args.get("economy"),
+        reference["economies"][0]["id"],
+        "Economic status",
+    )
     infection = request.args.get("infection", "MEA")
-    year = as_int(request.args.get("year"), reference["years"][0]["value"])
+    year, year_error = parse_int(
+        request.args.get("year"), reference["years"][0]["value"], "Year"
+    )
     search = request.args.get("search", "").strip()[:80]
     sort_by = request.args.get("sort", "rate")
     direction = request.args.get("direction", "desc")
     errors: list[str] = []
 
+    if economy_error:
+        errors.append(economy_error)
+    if year_error:
+        errors.append(year_error)
     if not valid_choice(economy, reference["economies"]):
         errors.append("Choose a valid economic status.")
     if not valid_choice(infection, reference["infections"]):
         errors.append("Choose a valid infection type.")
     if not valid_choice(year, reference["years"], "value"):
         errors.append("Choose a valid year.")
+    if not valid_scalar(sort_by, {"country", "cases", "population", "rate"}):
+        errors.append("Choose a valid sort field.")
+    if not valid_scalar(direction, {"asc", "desc"}):
+        errors.append("Choose a valid sort direction.")
 
     result = {"rows": [], "summary": [], "selected_summary": None}
     if not errors:
@@ -154,13 +178,25 @@ def vaccination_improvement():
     database = get_db()
     reference = get_reference_data(database)
     antigen = request.args.get("antigen", "MCV1")
-    start_year = as_int(request.args.get("start_year"), 2000)
-    end_year = as_int(request.args.get("end_year"), 2024)
-    limit = as_int(request.args.get("limit"), 10)
+    start_year, start_year_error = parse_int(
+        request.args.get("start_year"), 2000, "Start year"
+    )
+    end_year, end_year_error = parse_int(
+        request.args.get("end_year"), 2024, "End year"
+    )
+    limit, limit_error = parse_int(
+        request.args.get("limit"), 10, "Number of countries"
+    )
     sort_by = request.args.get("sort", "improvement")
     direction = request.args.get("direction", "desc")
     errors: list[str] = []
 
+    if start_year_error:
+        errors.append(start_year_error)
+    if end_year_error:
+        errors.append(end_year_error)
+    if limit_error:
+        errors.append(limit_error)
     if not valid_choice(antigen, reference["antigens"]):
         errors.append("Choose a valid antigen.")
     if not valid_choice(start_year, reference["years"], "value"):
@@ -171,6 +207,12 @@ def vaccination_improvement():
         errors.append("End year must be later than start year.")
     if limit < 3 or limit > 50:
         errors.append("Number of countries must be between 3 and 50.")
+    if not valid_scalar(
+        sort_by, {"improvement", "end_rate", "start_rate", "country"}
+    ):
+        errors.append("Choose a valid sort field.")
+    if not valid_scalar(direction, {"asc", "desc"}):
+        errors.append("Choose a valid sort direction.")
 
     rows = []
     if not errors:
@@ -206,9 +248,13 @@ def infection_benchmark():
     database = get_db()
     reference = get_reference_data(database)
     infection = request.args.get("infection", "MEA")
-    year = as_int(request.args.get("year"), reference["years"][0]["value"])
+    year, year_error = parse_int(
+        request.args.get("year"), reference["years"][0]["value"], "Year"
+    )
     errors: list[str] = []
 
+    if year_error:
+        errors.append(year_error)
     if not valid_choice(infection, reference["infections"]):
         errors.append("Choose a valid infection type.")
     if not valid_choice(year, reference["years"], "value"):
