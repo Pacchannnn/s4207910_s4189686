@@ -63,6 +63,16 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"Cases per 100,000", response.data)
         self.assertIn(b"Measles", response.data)
 
+    def test_malformed_year_and_sort_show_validation_messages(self) -> None:
+        response = self.client.get(
+            "/infections?economy=3&infection=MEA&year=twenty&sort=unknown&direction=sideways"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Year must be a whole number", response.data)
+        self.assertIn(b"Choose a valid sort field", response.data)
+        self.assertIn(b"Choose a valid sort direction", response.data)
+
     def test_invalid_improvement_years_show_validation_message(self) -> None:
         response = self.client.get(
             "/vaccination-improvement?antigen=MCV1&start_year=2024&end_year=2000&limit=10"
