@@ -228,9 +228,111 @@ class QueryTests(unittest.TestCase):
         improvements = [row["improvement"] for row in rows]
         self.assertEqual(improvements, sorted(improvements, reverse=True))
         for row in rows:
+            self.assertEqual(
+                set(row),
+                {
+                    "country_id",
+                    "country",
+                    "antigen",
+                    "start_year",
+                    "end_year",
+                    "start_rate",
+                    "end_rate",
+                    "improvement",
+                },
+            )
+            self.assertEqual(row["antigen"], "MCV1")
+            self.assertEqual(row["start_year"], 2000)
+            self.assertEqual(row["end_year"], 2024)
             self.assertAlmostEqual(
                 row["improvement"], row["end_rate"] - row["start_rate"], places=6
             )
+
+    def test_vaccination_improvement_uses_matching_endpoint_populations_and_exclusions(
+        self,
+    ) -> None:
+        self.db.execute(
+            "UPDATE Vaccination SET doses = ? WHERE antigen = ? AND country = ? AND year = ?",
+            (50, "MCV1", "AFG", 2000),
+        )
+        self.db.execute(
+            "UPDATE CountryPopulation SET population = ? WHERE country = ? AND year = ?",
+            (100, "AFG", 2000),
+        )
+        self.db.execute(
+            "UPDATE Vaccination SET doses = ? WHERE antigen = ? AND country = ? AND year = ?",
+            (150, "MCV1", "AFG", 2024),
+        )
+        self.db.execute(
+            "UPDATE CountryPopulation SET population = ? WHERE country = ? AND year = ?",
+            (200, "AFG", 2024),
+        )
+        self.db.execute(
+            "UPDATE CountryPopulation SET population = 0 WHERE country = ? AND year = ?",
+            ("AGO", 2000),
+        )
+        self.db.execute(
+            "DELETE FROM Vaccination WHERE antigen = ? AND country = ? AND year = ?",
+            ("MCV1", "AIA", 2024),
+        )
+        self.db.execute(
+            "UPDATE Vaccination SET doses = 0 WHERE antigen = ? AND country = ? AND year = ?",
+            ("MCV1", "ALB", 2024),
+        )
+        self.db.commit()
+
+        rows = get_vaccination_improvements(
+            self.db,
+            antigen="MCV1",
+            start_year=2000,
+            end_year=2024,
+            limit=50,
+            sort_by="country",
+            direction="asc",
+        )
+
+        rows_by_country = {row["country_id"]: row for row in rows}
+        self.assertIn("AFG", rows_by_country)
+        self.assertAlmostEqual(rows_by_country["AFG"]["start_rate"], 50.0)
+        self.assertAlmostEqual(rows_by_country["AFG"]["end_rate"], 75.0)
+        self.assertAlmostEqual(rows_by_country["AFG"]["improvement"], 25.0)
+        self.assertNotIn("AGO", rows_by_country)
+        self.assertNotIn("AIA", rows_by_country)
+        self.assertNotIn("ALB", rows_by_country)
+
+    def test_vaccination_improvement_applies_all_sort_modes_and_limit(self) -> None:
+        sort_fields = {
+            "country": "country",
+            "start_rate": "start_rate",
+            "end_rate": "end_rate",
+            "improvement": "improvement",
+        }
+
+        for sort_by, field in sort_fields.items():
+            for direction in ("asc", "desc"):
+                with self.subTest(sort_by=sort_by, direction=direction):
+                    rows = get_vaccination_improvements(
+                        self.db,
+                        antigen="MCV1",
+                        start_year=2000,
+                        end_year=2024,
+                        limit=3,
+                        sort_by=sort_by,
+                        direction=direction,
+                    )
+
+                    self.assertEqual(len(rows), 3)
+                    if field == "country":
+                        expected = sorted(
+                            rows,
+                            key=lambda row: row[field],
+                            reverse=direction == "desc",
+                        )
+                    elif direction == "asc":
+                        expected = sorted(rows, key=lambda row: (row[field], row["country"]))
+                    else:
+                        expected = sorted(rows, key=lambda row: (-row[field], row["country"]))
+                    self.assertEqual(rows, expected)
 
     def test_above_global_query_puts_global_row_first(self) -> None:
         rows = get_above_global_infections(self.db, infection_id="MEA", year=2020)

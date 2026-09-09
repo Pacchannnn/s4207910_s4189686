@@ -26,16 +26,19 @@
 
 <section class="section compact-section"><div class="content-shell">
   {% set methodology_title = "Doses relative to population" %}
-  {% set methodology_text = "For each country and year, rate = administered doses / population x 100. Improvement = end rate - start rate. SQL CTEs build the two year datasets, join them by country and rank positive changes." %}
+  {% set methodology_text = "For each country at each endpoint, rate = administered doses / population x 100. Only countries with data for both years and a positive population at each endpoint are comparable. Improvement = end rate - start rate; SQL ranks positive changes." %}
   {% include "components/methodology_note.html" %}
 </div></section>
 
 <section class="section compact-section section-rule" aria-labelledby="improvement-results-title"><div class="content-shell">
   <div class="section-heading split-heading results-heading"><div><p class="eyebrow">Ranked result</p><h2 id="improvement-results-title">{{ rows|length }} countries returned</h2></div><p>Rates describe recorded doses as a percentage of population; they are not the provided target-coverage field.</p></div>
-  {% if rows %}<div class="table-shell" tabindex="0"><table>
-    <thead><tr><th>Rank</th><th>Country</th><th class="numeric">{{ filters.start_year }} rate</th><th class="numeric">{{ filters.end_year }} rate</th><th class="numeric">Improvement</th></tr></thead>
-    <tbody>{% for row in rows %}<tr><td><span class="rank-number">{{ loop.index }}</span></td><td><strong>{{ row.country }}</strong></td><td class="numeric">{{ row.start_rate|number(3) }}%</td><td class="numeric">{{ row.end_rate|number(3) }}%</td><td class="numeric"><span class="change-positive">+{{ row.improvement|number(3) }} pp</span></td></tr>{% endfor %}</tbody>
-  </table></div>{% elif not errors %}<div class="empty-state"><h3>No positive improvement found</h3><p>Choose a wider time range or another antigen.</p></div>{% endif %}
+  {% if rows %}
+  <div class="table-shell" tabindex="0"><table>
+    <caption>Positive vaccination-rate improvements for {{ rows[0].antigen }} from {{ rows[0].start_year }} to {{ rows[0].end_year }}</caption>
+    <thead><tr><th scope="col">Rank</th><th scope="col">Country</th><th scope="col">Antigen</th><th scope="col" class="numeric">Start year</th><th scope="col" class="numeric">End year</th><th scope="col" class="numeric">Start rate</th><th scope="col" class="numeric">End rate</th><th scope="col" class="numeric">Improvement</th></tr></thead>
+    <tbody>{% for row in rows %}<tr><td><span class="rank-number">{{ loop.index }}</span></td><td><strong>{{ row.country }}</strong></td><td>{{ row.antigen }}</td><td class="numeric">{{ row.start_year }}</td><td class="numeric">{{ row.end_year }}</td><td class="numeric">{{ row.start_rate|number(3) }}%</td><td class="numeric">{{ row.end_rate|number(3) }}%</td><td class="numeric"><span class="change-positive">+{{ row.improvement|number(3) }} pp</span></td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% elif not errors %}<div class="empty-state"><h3>No positive improvement found</h3><p>Only countries with data for both years and positive endpoint populations can be compared. Try a wider time range or another antigen.</p></div>{% endif %}
 </div></section>
 {% endblock %}
 
