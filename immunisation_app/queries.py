@@ -445,6 +445,7 @@ def get_above_global_infections(
                 population,
                 cases_per_100k
             FROM global_rate
+            WHERE cases_per_100k IS NOT NULL
 
             UNION ALL
 

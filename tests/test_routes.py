@@ -394,13 +394,47 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"No positive improvement found", response.data)
         self.assertIn(b"Only countries with data for both years", response.data)
 
-    def test_benchmark_page_includes_global_row_first(self) -> None:
+    def test_benchmark_page_includes_accessible_global_row_first(self) -> None:
         response = self.client.get("/infection-benchmark?infection=MEA&year=2020")
 
         self.assertEqual(response.status_code, 200)
-        global_index = response.data.index(b"Global benchmark")
-        country_index = response.data.index(b"Countries above global rate")
+        table_start = response.data.index(b"<tbody>")
+        accessible_global_row = (
+            b'<tr class="global-row"><th scope="row"><strong>Global benchmark'
+        )
+        self.assertIn(accessible_global_row, response.data)
+        global_index = response.data.index(b'<tr class="global-row">', table_start)
+        country_index = response.data.index(b"Congo, Dem. Rep.", global_index)
         self.assertLess(global_index, country_index)
+        self.assertIn(b"28 countries above the global rate", response.data)
+        self.assertIn(b"<caption>", response.data)
+        self.assertIn(b"Global benchmark and countries above it", response.data)
+        self.assertEqual(response.data.count(b'scope="col"'), 6)
+        self.assertIn(b'tabindex="0"', response.data)
+        self.assertIn(b"per 100,000 people", response.data)
+        self.assertIn(
+            b"Weighted global rate = total reported cases / total represented "
+            b"population x 100,000",
+            response.data,
+        )
+
+    def test_benchmark_page_explains_when_no_benchmark_is_available(self) -> None:
+        with self.app.app_context():
+            database = get_db()
+            database.execute(
+                "DELETE FROM InfectionData WHERE inf_type = ? AND year = ?",
+                ("MEA", 2020),
+            )
+            database.commit()
+
+        response = self.client.get(
+            "/infection-benchmark?infection=MEA&year=2020"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"No benchmark available", response.data)
+        self.assertNotIn(b"No data", response.data)
+        self.assertNotIn(b'class="global-benchmark"', response.data)
 
     def test_unknown_route_returns_branded_404(self) -> None:
         response = self.client.get("/not-a-real-page")
