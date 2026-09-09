@@ -54,6 +54,25 @@ class QueryTests(unittest.TestCase):
         self.assertEqual(before, after)
         self.db = connect_database(self.database_path)
 
+    def test_project_table_initialisation_installs_submission_identities(self) -> None:
+        self.db.execute("DELETE FROM ProjectTeamMember")
+        self.db.commit()
+        self.db.close()
+
+        initialise_project_tables(self.database_path)
+
+        self.db = connect_database(self.database_path)
+        self.assertEqual(
+            [
+                (member["name"], member["student_number"])
+                for member in get_team_members(self.db)
+            ],
+            [
+                ("Le Chi Bach", "s4207910"),
+                ("Nguyen Tran Ba Trong", "s4189686"),
+            ],
+        )
+
     def test_mission_data_is_retrieved_from_database(self) -> None:
         personas = get_personas(self.db)
         members = get_team_members(self.db)
@@ -61,6 +80,27 @@ class QueryTests(unittest.TestCase):
         self.assertGreaterEqual(len(personas), 3)
         self.assertEqual(len(members), 2)
         self.assertTrue(all(row["student_number"] for row in members))
+
+    def test_team_data_contains_submission_identities(self) -> None:
+        members = get_team_members(self.db)
+
+        self.assertEqual(
+            {member["student_number"] for member in members},
+            {"s4207910", "s4189686"},
+        )
+        self.assertTrue(
+            all("replace in database" not in member["name"].lower() for member in members)
+        )
+        self.assertEqual(
+            [
+                (member["name"], member["student_number"])
+                for member in members
+            ],
+            [
+                ("Le Chi Bach", "s4207910"),
+                ("Nguyen Tran Ba Trong", "s4189686"),
+            ],
+        )
 
     def test_vaccination_view_filters_and_summarises_in_sql(self) -> None:
         result = get_vaccination_view(

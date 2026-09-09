@@ -31,8 +31,8 @@ PERSONAS = (
 )
 
 TEAM_MEMBERS = (
-    (1, "Student 1 - replace in database", "sID1", "Vaccination stream"),
-    (2, "Student 2 - replace in database", "sID2", "Infection stream"),
+    (1, "Le Chi Bach", "s4207910", "Vaccination stream"),
+    (2, "Nguyen Tran Ba Trong", "s4189686", "Infection stream"),
 )
 
 

@@ -531,6 +531,19 @@ class RouteTests(unittest.TestCase):
             for value in member.values():
                 self.assertIn(escape(str(value)).encode(), response.data)
 
+    def test_mission_renders_exact_database_backed_submission_identities(self) -> None:
+        response = self.client.get("/mission")
+
+        self.assertEqual(response.status_code, 200)
+        for name, student_number in (
+            ("Le Chi Bach", "s4207910"),
+            ("Nguyen Tran Ba Trong", "s4189686"),
+        ):
+            self.assertIn(escape(name).encode(), response.data)
+            self.assertIn(student_number.encode(), response.data)
+        for placeholder in (b"replace in database", b"sID1", b"sID2"):
+            self.assertNotIn(placeholder, response.data)
+
     def test_invalid_filters_render_a_labelled_alert(self) -> None:
         response = self.client.get(
             "/infections?economy=3&infection=MEA&year=twenty"

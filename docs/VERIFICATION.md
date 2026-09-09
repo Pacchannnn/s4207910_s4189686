@@ -98,8 +98,40 @@ The tracked SQLite database was queried directly during this verification:
 | Duplicate population `(country, year)` groups | 0 |
 | Null or non-positive population rows | 0 |
 | Available year range | 2000-2024 |
+| Project team identities | Le Chi Bach (`s4207910`); Nguyen Tran Ba Trong (`s4189686`) |
 
-The vaccination page retains above-100% values and labels them; it does not cap them. The exact team names and student-number/member-ID mapping remain a separate blocked submission checkpoint and were not altered during Task 9.
+The vaccination page retains above-100% values and labels them; it does not cap them. During Task 9, the exact team-name/student-number checkpoint was still blocked and the placeholder rows were not altered; Task 10 resolves that checkpoint below.
+
+## Final requirements and submission audit
+
+Task 10 began from commit `e3f1fdc`. All 28 rows in `docs/REQUIREMENTS_MATRIX.md` were checked against their named view, query, template, and test evidence. Every mandatory row is Met; none remains Partial or Blocked.
+
+Identity TDD evidence:
+
+1. RED: the exact query and Mission-route regressions both failed against the tracked placeholder rows. The query returned `sID1` and `sID2`, and the rendered route did not contain Le Chi Bach.
+2. GREEN: the tracked database was updated with a parameterized two-row statement and the bootstrap constants were aligned. The exact query mapping, route output, placeholder rejection, existing database-backed Mission behavior, and initialisation idempotence checks passed.
+3. Bootstrap RED/GREEN: deleting both temporary team rows and re-running project-table initialisation failed with the old `TEAM_MEMBERS` constants, then passed after the exact identities were restored. This proves a newly populated project table receives the same submission mapping as the tracked database.
+
+The final Flask test-client smoke requested each route with defaults and, where the route defines filters, one representative valid query. `/` and `/mission` have no filter controls, so their second checks repeated the canonical route with a second requirement-specific assertion.
+
+| Route | Default check | Representative valid check | Requirement-specific evidence |
+|---|---|---|---|
+| `/` | HTTP 200 | Canonical route repeated; filters not applicable | Four database facts and the overview-to-analysis paths rendered. |
+| `/mission` | HTTP 200 | Canonical route repeated; filters not applicable | Three usage layers and exact database-backed team identities rendered without placeholders. |
+| `/vaccinations` | HTTP 200 | `antigen=MCV2&year=2010&sort=coverage&direction=desc` | Regional summary and 90%-target country result content rendered. |
+| `/infections` | HTTP 200 | `economy=3&infection=MEA&year=2022&sort=rate&direction=desc` | All-economy summary and selected-economy metrics rendered. |
+| `/vaccination-improvement` | HTTP 200 | `antigen=MCV1&start_year=2000&end_year=2024&limit=10&sort=improvement&direction=desc` | Complete positive-improvement comparison rendered. |
+| `/infection-benchmark` | HTTP 200 | `infection=MEA&year=2020` | Global-first benchmark comparison rendered. |
+
+All 12 smoke responses contained the branded shell and `#main-content`, omitted a server traceback, and included their requirement-specific marker.
+
+Pre-commit verification results:
+
+- `python -m unittest tests.test_queries tests.test_routes -v`: 48 tests passed.
+- `python -m unittest discover -s tests -v`: 51 tests passed.
+- `PRAGMA integrity_check`: `ok`; the tracked database returned exactly the two mapped team rows in member order.
+- `git diff --check`: exit 0 with no whitespace errors (Git emitted only the expected Windows LF-to-CRLF working-copy notices).
+- `git status --short --branch` showed only the six intended Task 10 files, and the 12-commit log confirmed the reviewed Task 5-9 history leading to the exact Task 10 baseline `e3f1fdc`.
 
 ## Repeatable final commands
 
