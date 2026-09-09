@@ -44,6 +44,20 @@ class QueryTests(unittest.TestCase):
         self.assertEqual(snapshot["antigen_count"], 5)
         self.assertEqual(snapshot["infection_count"], 3)
 
+    def test_vaccination_fallback_requires_positive_target(self) -> None:
+        for target in (-100, 0, None, 100):
+            with self.subTest(target=target):
+                self.db.execute("UPDATE Vaccination SET coverage = NULL, doses = 95, target_num = ? WHERE antigen = 'MCV1' AND year = 2024", (target,))
+                result = get_vaccination_view(self.db, antigen="MCV1", year=2024,
+                    country="", region="", sort_by="coverage", direction="desc")
+                if target == 100:
+                    self.assertGreater(result["metrics"]["countries_with_data"], 0)
+                    self.assertEqual(result["metrics"]["average_coverage"], 95)
+                else:
+                    self.assertEqual(result["rows"], [])
+                    self.assertEqual(result["metrics"]["countries_with_data"], 0)
+                    self.assertIsNone(result["metrics"]["average_coverage"])
+
     def test_project_table_initialisation_is_idempotent(self) -> None:
         self.db.close()
         before = hashlib.sha256(self.database_path.read_bytes()).hexdigest()

@@ -3,8 +3,8 @@
 {% block content %}
 <section class="page-intro analysis-intro">
   <div class="content-shell intro-grid">
-    <div><p class="eyebrow">Deep analysis</p><h1>Largest vaccination-rate improvements</h1></div>
-    <p class="lead">Compare two year-specific datasets and rank countries by the increase in administered doses as a share of population.</p>
+    <div><p class="eyebrow">Deep analysis</p><h1>Positive vaccination-rate improvements</h1></div>
+    <p class="lead">Compare increases in administered doses as a share of population. Your selected sort determines which countries appear within the result limit; choose Improvement and Descending to see the largest increases first.</p>
   </div>
 </section>
 
@@ -35,7 +35,7 @@
   {% if rows %}
   <div class="table-shell" role="region" aria-label="Scrollable vaccination improvement results table" tabindex="0"><table>
     <caption>Positive vaccination-rate improvements for {{ rows[0].antigen }} from {{ rows[0].start_year }} to {{ rows[0].end_year }}</caption>
-    <thead><tr><th scope="col">Rank</th><th scope="col">Country</th><th scope="col">Antigen</th><th scope="col" class="numeric">Start year</th><th scope="col" class="numeric">End year</th><th scope="col" class="numeric">Start rate</th><th scope="col" class="numeric">End rate</th><th scope="col" class="numeric">Improvement</th></tr></thead>
+    <thead><tr><th scope="col">Position</th><th scope="col">Country</th><th scope="col">Antigen</th><th scope="col" class="numeric">Start year</th><th scope="col" class="numeric">End year</th><th scope="col" class="numeric">Start rate</th><th scope="col" class="numeric">End rate</th><th scope="col" class="numeric">Improvement</th></tr></thead>
     <tbody>{% for row in rows %}<tr><td><span class="rank-number">{{ loop.index }}</span></td><td><strong>{{ row.country }}</strong></td><td>{{ row.antigen }}</td><td class="numeric">{{ row.start_year }}</td><td class="numeric">{{ row.end_year }}</td><td class="numeric">{{ row.start_rate|number(3) }}%</td><td class="numeric">{{ row.end_rate|number(3) }}%</td><td class="numeric"><span class="change-positive">+{{ row.improvement|number(3) }} pp</span></td></tr>{% endfor %}</tbody>
   </table></div>
   {% elif not errors %}<div class="empty-state"><h3>No positive improvement found</h3><p>Only countries with data for both years and positive endpoint populations can be compared. Try a wider time range or another antigen.</p></div>{% endif %}

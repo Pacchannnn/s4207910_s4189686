@@ -143,7 +143,8 @@ def get_vaccination_view(
     coverage_expression = """
         COALESCE(
             CAST(NULLIF(TRIM(CAST(v.coverage AS TEXT)), '') AS REAL),
-            v.doses * 100.0 / NULLIF(v.target_num, 0)
+            CASE WHEN v.target_num > 0
+                THEN v.doses * 100.0 / v.target_num END
         )
     """
 

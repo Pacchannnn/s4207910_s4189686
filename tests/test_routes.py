@@ -8,6 +8,7 @@ from collections import Counter
 from html import escape
 from html.parser import HTMLParser
 from pathlib import Path
+from unittest.mock import patch
 
 from immunisation_app import create_app
 from immunisation_app.db import get_db
@@ -434,8 +435,10 @@ class RouteTests(unittest.TestCase):
     ) -> None:
         response = self.client.get("/")
 
-        self.assertIn(b"vaccination coverage", response.data)
-        self.assertIn(b"preventable infections", response.data)
+        hero = re.search(rb'<section class="hero">(.*?)</section>', response.data, re.DOTALL)
+        self.assertIsNotNone(hero)
+        self.assertIn(b"vaccination coverage", hero.group(1))
+        self.assertIn(b"preventable infections", hero.group(1))
 
     def test_home_fact_cards_follow_snapshot_database_changes(self) -> None:
         with self.app.app_context():
@@ -452,6 +455,44 @@ class RouteTests(unittest.TestCase):
 
         self.assertEqual(len(fact_cards), 4)
         self.assertIn(b"1999-2024", b"".join(fact_cards))
+
+        with self.app.app_context():
+            database = get_db()
+            database.execute("INSERT INTO YearDate (YearID) VALUES (2031)")
+            database.execute("INSERT INTO Country (CountryID, name) VALUES ('ZZZ', 'Fixture country')")
+            database.execute("INSERT INTO Antigen (AntigenID, name) VALUES ('TEST', 'Fixture antigen')")
+            database.execute("INSERT INTO Infection_Type (id, description) VALUES ('TST', 'Fixture')")
+            database.commit()
+        changed = self.client.get("/").data
+        values = re.findall(rb'<span class="fact-value">(.*?)</span>', changed)
+        self.assertEqual(values, [b"1999-2031", b"218", b"6", b"4"])
+
+    def test_invalid_analytical_inputs_bypass_queries(self) -> None:
+        for route, query, fields in (
+            ("/vaccinations", "get_vaccination_view", ("year", "antigen", "country", "region", "sort", "direction")),
+            ("/infections", "get_infection_by_economy", ("year", "economy", "infection", "sort", "direction")),
+            ("/vaccination-improvement", "get_vaccination_improvements", ("start_year", "end_year", "limit", "antigen", "sort", "direction")),
+            ("/infection-benchmark", "get_above_global_infections", ("year", "infection")),
+        ):
+            for field in fields:
+                with self.subTest(route=route, field=field), patch("immunisation_app.views." + query) as analytical_query:
+                    response = self.client.get(route, query_string={field: "invalid-value"})
+                    self.assertEqual(response.status_code, 200)
+                    self.assertIn(b'role="alert"', response.data)
+                    analytical_query.assert_not_called()
+
+    def test_improvement_alternate_sorts_do_not_claim_largest_ranks(self) -> None:
+        for sort in ("country", "start_rate", "end_rate", "improvement"):
+            for direction in ("asc", "desc"):
+                with self.subTest(sort=sort, direction=direction):
+                    response = self.client.get("/vaccination-improvement", query_string={
+                        "antigen": "MCV1", "start_year": 2000, "end_year": 2024,
+                        "limit": 3, "sort": sort, "direction": direction,
+                    })
+                    self.assertEqual(response.status_code, 200)
+                    self.assertIn(b"Positive vaccination-rate improvements", response.data)
+                    self.assertIn(b'<th scope="col">Position</th>', response.data)
+                    self.assertNotIn(b"Largest vaccination-rate improvements", response.data)
 
     def test_home_links_to_both_explorers_and_both_analyses(self) -> None:
         response = self.client.get("/")
