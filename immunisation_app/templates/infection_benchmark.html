@@ -30,15 +30,18 @@
 {% endif %}
 
 <section class="section compact-section section-rule" aria-labelledby="country-benchmark-title"><div class="content-shell">
+  {% if global_row %}
   <div class="section-heading split-heading results-heading"><div><p class="eyebrow">Country comparison</p><h2 id="country-benchmark-title">{{ country_rows|length }} {{ 'country' if country_rows|length == 1 else 'countries' }} above the global rate</h2></div><p>The first table row repeats the global value for direct comparison. Country rows are ordered from highest reported rate.</p></div>
-  {% if global_row %}<div class="table-shell" role="region" aria-label="Scrollable benchmark comparison table" tabindex="0"><table>
+  <div class="table-shell" role="region" aria-label="Scrollable benchmark comparison table" tabindex="0"><table>
     <caption>Global benchmark and countries above it for {{ global_row.infection }} in {{ global_row.year }}</caption>
     <thead><tr><th scope="col">Scope</th><th scope="col">Infection</th><th scope="col">Year</th><th scope="col" class="numeric">Cases</th><th scope="col" class="numeric">Population</th><th scope="col" class="numeric">Cases per 100,000 people</th></tr></thead>
     <tbody>
       <tr class="global-row"><th scope="row"><strong>Global benchmark</strong></th><td>{{ global_row.infection }}</td><td>{{ global_row.year }}</td><td class="numeric">{{ global_row.cases|number }}</td><td class="numeric">{{ global_row.population|number }}</td><td class="numeric"><strong>{{ global_row.cases_per_100k|number(3) }}</strong></td></tr>
       {% for row in country_rows %}<tr><th scope="row"><strong>{{ row.country }}</strong></th><td>{{ row.infection }}</td><td>{{ row.year }}</td><td class="numeric">{{ row.cases|number }}</td><td class="numeric">{{ row.population|number }}</td><td class="numeric">{{ row.cases_per_100k|number(3) }}</td></tr>{% endfor %}
     </tbody>
-  </table></div>{% elif not errors %}<div class="empty-state"><h3>No benchmark available</h3><p>A weighted benchmark requires reported cases and a positive represented population. Choose another year or infection type.</p></div>{% endif %}
+  </table></div>
+  {% elif not errors %}<div class="empty-state" aria-labelledby="country-benchmark-title"><h2 id="country-benchmark-title">No benchmark available</h2><p>A weighted benchmark requires reported cases and a positive represented population. Choose another year or infection type.</p></div>
+  {% else %}<h2 class="sr-only" id="country-benchmark-title">Benchmark results</h2>{% endif %}
 </div></section>
 
 <section class="section compact-section"><div class="content-shell">

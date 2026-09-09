@@ -433,6 +433,7 @@ class RouteTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"No benchmark available", response.data)
+        self.assertNotIn(b"0 countries above the global rate", response.data)
         self.assertNotIn(b"No data", response.data)
         self.assertNotIn(b'class="global-benchmark"', response.data)
 
