@@ -291,6 +291,109 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"End year must be later than start year", response.data)
 
+    def test_improvement_limit_boundaries_are_accepted_and_retained(self) -> None:
+        for limit in (3, 50):
+            with self.subTest(limit=limit):
+                response = self.client.get(
+                    "/vaccination-improvement"
+                    f"?antigen=MCV1&start_year=2000&end_year=2024&limit={limit}"
+                )
+
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(f'value="{limit}"'.encode(), response.data)
+                self.assertNotIn(b"Number of countries must be between", response.data)
+                self.assertLessEqual(response.data.count(b'class="rank-number"'), limit)
+
+    def test_improvement_rejects_out_of_range_equal_reversed_and_malformed_values(
+        self,
+    ) -> None:
+        cases = (
+            (
+                "start_year=2000&end_year=2024&limit=2",
+                b"Number of countries must be between 3 and 50",
+            ),
+            (
+                "start_year=2000&end_year=2024&limit=51",
+                b"Number of countries must be between 3 and 50",
+            ),
+            (
+                "start_year=2024&end_year=2024&limit=10",
+                b"End year must be later than start year",
+            ),
+            (
+                "start_year=2024&end_year=2000&limit=10",
+                b"End year must be later than start year",
+            ),
+            (
+                "start_year=twenty&end_year=2024&limit=10",
+                b"Start year must be a whole number",
+            ),
+            (
+                "start_year=2000&end_year=twenty&limit=10",
+                b"End year must be a whole number",
+            ),
+            (
+                "start_year=2000&end_year=2024&limit=many",
+                b"Number of countries must be a whole number",
+            ),
+        )
+
+        for query, message in cases:
+            with self.subTest(query=query):
+                response = self.client.get(
+                    f"/vaccination-improvement?antigen=MCV1&{query}"
+                )
+
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(message, response.data)
+                self.assertIn(b'role="alert"', response.data)
+
+    def test_improvement_results_render_complete_ranked_comparison_rows(self) -> None:
+        response = self.client.get(
+            "/vaccination-improvement"
+            "?antigen=MCV1&start_year=2000&end_year=2024&limit=3"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"3 countries returned", response.data)
+        self.assertEqual(response.data.count(b'class="rank-number"'), 3)
+        self.assertIn(b"<caption>", response.data)
+        self.assertIn(b"Positive vaccination-rate improvements", response.data)
+        for heading in (
+            b"Antigen",
+            b"Start year",
+            b"End year",
+            b"Start rate",
+            b"End rate",
+            b"Improvement",
+        ):
+            with self.subTest(heading=heading):
+                self.assertIn(heading, response.data)
+        self.assertGreaterEqual(response.data.count(b">MCV1<"), 3)
+        self.assertGreaterEqual(response.data.count(b">2000<"), 3)
+        self.assertGreaterEqual(response.data.count(b">2024<"), 3)
+        self.assertIn(b"rate = administered doses / population x 100", response.data)
+        self.assertIn(b"Improvement = end rate - start rate", response.data)
+
+    def test_improvement_page_explains_when_no_positive_rows_exist(self) -> None:
+        with self.app.app_context():
+            database = get_db()
+            database.execute(
+                "DELETE FROM Vaccination WHERE antigen = ? AND year IN (?, ?)",
+                ("MCV1", 2000, 2024),
+            )
+            database.commit()
+
+        response = self.client.get(
+            "/vaccination-improvement"
+            "?antigen=MCV1&start_year=2000&end_year=2024&limit=10"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"0 countries returned", response.data)
+        self.assertIn(b"No positive improvement found", response.data)
+        self.assertIn(b"Only countries with data for both years", response.data)
+
     def test_benchmark_page_includes_global_row_first(self) -> None:
         response = self.client.get("/infection-benchmark?infection=MEA&year=2020")
 

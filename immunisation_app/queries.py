@@ -377,6 +377,9 @@ def get_vaccination_improvements(
         SELECT
             country_id,
             country,
+            ? AS antigen,
+            ? AS start_year,
+            ? AS end_year,
             start_rate,
             end_rate,
             improvement
@@ -385,7 +388,19 @@ def get_vaccination_improvements(
         LIMIT ?
     """
     return _rows(
-        db.execute(sql, (antigen, start_year, antigen, end_year, limit))
+        db.execute(
+            sql,
+            (
+                antigen,
+                start_year,
+                antigen,
+                end_year,
+                antigen,
+                start_year,
+                end_year,
+                limit,
+            ),
+        )
     )
 
 
