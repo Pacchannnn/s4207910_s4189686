@@ -344,6 +344,17 @@ class QueryTests(unittest.TestCase):
         self.assertTrue(all(rate > global_rate for rate in country_rates))
         self.assertEqual(country_rates, sorted(country_rates, reverse=True))
 
+    def test_benchmark_returns_no_global_row_without_source_data(self) -> None:
+        self.db.execute(
+            "DELETE FROM InfectionData WHERE inf_type = ? AND year = ?",
+            ("MEA", 2020),
+        )
+        self.db.commit()
+
+        rows = get_above_global_infections(self.db, infection_id="MEA", year=2020)
+
+        self.assertEqual(rows, [])
+
     def test_sort_inputs_are_whitelisted(self) -> None:
         result = get_vaccination_view(
             self.db,
