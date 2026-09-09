@@ -354,9 +354,9 @@ class QueryTests(unittest.TestCase):
             "WHERE country = ? AND year = ?",
             (
                 (400_000, "AFG", 2020),
+                (100_000, "DZA", 2020),
                 (100_000, "AGO", 2020),
                 (100_000, "ALB", 2020),
-                (100_000, "DZA", 2020),
             ),
         )
         self.db.executemany(
@@ -364,9 +364,9 @@ class QueryTests(unittest.TestCase):
             "VALUES (?, ?, ?, ?)",
             (
                 ("MEA", "AFG", 2020, 60),
-                ("MEA", "AGO", 2020, 20),
+                ("MEA", "DZA", 2020, 20),
+                ("MEA", "AGO", 2020, 30),
                 ("MEA", "ALB", 2020, 30),
-                ("MEA", "DZA", 2020, 30),
             ),
         )
         self.db.commit()
@@ -375,7 +375,7 @@ class QueryTests(unittest.TestCase):
 
         self.assertEqual(
             [row["country"] for row in rows],
-            ["Global benchmark", "Albania", "Algeria"],
+            ["Global benchmark", "Albania", "Angola"],
         )
         self.assertEqual(rows[0]["cases"], 140)
         self.assertEqual(rows[0]["population"], 700_000)
