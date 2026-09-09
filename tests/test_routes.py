@@ -164,10 +164,12 @@ class SemanticDocumentParser(HTMLParser):
         )
 
     def unlabelled_controls(self) -> list[dict[str, object]]:
-        control_ids = [
-            control["attributes"].get("id") for control in self.controls
-        ]
-        id_counts = Counter(control_id for control_id in control_ids if control_id)
+        document_ids = (
+            attributes.get("id")
+            for attributes_by_tag in self.tag_attributes.values()
+            for attributes in attributes_by_tag
+        )
+        id_counts = Counter(document_id for document_id in document_ids if document_id)
         explicitly_labelled_ids = {
             label["for"]
             for label in self.labels
@@ -329,6 +331,17 @@ class RouteTests(unittest.TestCase):
             ],
             ["year", None],
         )
+
+    def test_semantic_parser_requires_document_wide_unique_label_target(self) -> None:
+        document = SemanticDocumentParser()
+        document.feed(
+            '<label for="shared">Year</label>'
+            '<div id="shared"></div>'
+            '<input id="shared" name="year">'
+        )
+
+        self.assertEqual(document.control_names(), ("year",))
+        self.assertEqual(document.unlabelled_controls(), document.controls)
 
     def test_phone_styles_stack_every_filter_control_in_one_column(self) -> None:
         response = self.client.get("/static/css/styles.css")
