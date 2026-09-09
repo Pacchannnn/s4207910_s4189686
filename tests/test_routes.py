@@ -338,10 +338,12 @@ class RouteTests(unittest.TestCase):
             '<label for="shared">Year</label>'
             '<div id="shared"></div>'
             '<input id="shared" name="year">'
+            '<label for="unique">Country</label>'
+            '<input id="unique" name="country">'
         )
 
-        self.assertEqual(document.control_names(), ("year",))
-        self.assertEqual(document.unlabelled_controls(), document.controls)
+        self.assertEqual(document.control_names(), ("year", "country"))
+        self.assertEqual(document.unlabelled_controls(), [document.controls[0]])
 
     def test_phone_styles_stack_every_filter_control_in_one_column(self) -> None:
         response = self.client.get("/static/css/styles.css")
