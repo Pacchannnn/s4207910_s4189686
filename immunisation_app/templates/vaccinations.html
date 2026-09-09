@@ -70,9 +70,9 @@
       <p>Compare all countries with usable coverage with the subset meeting the 90% target; average coverage uses all usable values.</p>
     </div>
     {% if summary %}
-    <div class="table-shell" tabindex="0"><table>
+    <div class="table-shell" role="region" aria-label="Scrollable regional vaccination summary table" tabindex="0"><table>
       <caption>Regional coverage target results for {{ filters.antigen }} in {{ filters.year }}</caption>
-      <thead><tr><th>Antigen</th><th>Year</th><th>Region</th><th class="numeric">Countries with data</th><th class="numeric">Countries meeting 90%</th><th class="numeric">Average coverage</th></tr></thead>
+      <thead><tr><th scope="col">Antigen</th><th scope="col">Year</th><th scope="col">Region</th><th scope="col" class="numeric">Countries with data</th><th scope="col" class="numeric">Countries meeting 90%</th><th scope="col" class="numeric">Average coverage</th></tr></thead>
       <tbody>{% for item in summary %}<tr>
         <td><strong>{{ item.antigen }}</strong></td><td>{{ item.year }}</td><td>{{ item.region_name }}</td>
         <td class="numeric">{{ item.countries_with_data }}</td><td class="numeric">{{ item.met_target_count }}</td><td class="numeric">{{ item.average_coverage|number(2) }}{% if item.average_coverage is not none %}%{% endif %}</td>
@@ -89,9 +89,9 @@
       <p>Only countries with usable coverage at or above the project's 90% target are shown.</p>
     </div>
     {% if rows %}
-    <div class="table-shell" tabindex="0"><table>
+    <div class="table-shell" role="region" aria-label="Scrollable country vaccination results table" tabindex="0"><table>
       <caption>Countries meeting the 90% coverage target for {{ filters.antigen }} in {{ filters.year }}</caption>
-      <thead><tr><th>Antigen</th><th>Year</th><th>Country</th><th>Region</th><th class="numeric">Doses</th><th class="numeric">Target</th><th class="numeric">Coverage</th><th>Status</th></tr></thead>
+      <thead><tr><th scope="col">Antigen</th><th scope="col">Year</th><th scope="col">Country</th><th scope="col">Region</th><th scope="col" class="numeric">Doses</th><th scope="col" class="numeric">Target</th><th scope="col" class="numeric">Coverage</th><th scope="col">Status</th></tr></thead>
       <tbody>{% for row in rows %}<tr>
         <td><strong>{{ row.antigen }}</strong></td><td>{{ row.year }}</td><td>{{ row.country }}</td><td>{{ row.region_name }}</td>
         <td class="numeric">{{ row.doses|number }}</td><td class="numeric">{{ row.target_num|number }}</td><td class="numeric">{{ row.coverage|number(2) }}{% if row.coverage is not none %}%{% endif %}</td>

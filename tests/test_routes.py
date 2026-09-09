@@ -5,6 +5,7 @@ import shutil
 import tempfile
 import unittest
 from html import escape
+from html.parser import HTMLParser
 from pathlib import Path
 
 from immunisation_app import create_app
@@ -14,6 +15,136 @@ from immunisation_app.queries import get_personas, get_team_members
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SOURCE_DB = PROJECT_ROOT / "database" / "immunisation.db"
+
+
+class SemanticDocumentParser(HTMLParser):
+    """Collect browser-facing document semantics without third-party parsers."""
+
+    VOID_ELEMENTS = {
+        "area",
+        "base",
+        "br",
+        "col",
+        "embed",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "param",
+        "source",
+        "track",
+        "wbr",
+    }
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.stack: list[tuple[str, dict[str, str | None]]] = []
+        self.tag_attributes: dict[str, list[dict[str, str | None]]] = {}
+        self.title_parts: list[str] = []
+        self.labels: list[dict[str, object]] = []
+        self._open_labels: list[dict[str, object]] = []
+        self.tables: list[dict[str, object]] = []
+        self._open_table: dict[str, object] | None = None
+        self._open_caption: list[str] | None = None
+        self._thead_depth = 0
+        self.empty_state_headings: list[str] = []
+        self._empty_state_depth = 0
+        self._open_empty_heading: list[str] | None = None
+
+    def handle_starttag(
+        self, tag: str, attrs: list[tuple[str, str | None]]
+    ) -> None:
+        attributes = dict(attrs)
+        self.tag_attributes.setdefault(tag, []).append(attributes)
+
+        if tag == "label":
+            label: dict[str, object] = {"text": [], "controls": []}
+            self.labels.append(label)
+            self._open_labels.append(label)
+
+        if tag in {"input", "select", "textarea"} and self._open_labels:
+            self._open_labels[-1]["controls"].append(attributes.get("name"))
+
+        if tag == "thead":
+            self._thead_depth += 1
+
+        if tag == "table":
+            wrapper = next(
+                (
+                    item_attrs
+                    for item_tag, item_attrs in reversed(self.stack)
+                    if item_tag == "div"
+                    and "table-shell" in (item_attrs.get("class") or "").split()
+                ),
+                {},
+            )
+            self._open_table = {
+                "caption": [],
+                "column_header_scopes": [],
+                "wrapper": wrapper,
+            }
+            self.tables.append(self._open_table)
+        elif tag == "caption" and self._open_table is not None:
+            self._open_caption = self._open_table["caption"]
+        elif tag == "th" and self._open_table is not None and self._thead_depth:
+            self._open_table["column_header_scopes"].append(attributes.get("scope"))
+
+        classes = (attributes.get("class") or "").split()
+        if "empty-state" in classes:
+            self._empty_state_depth += 1
+        elif self._empty_state_depth and tag in {"h2", "h3"}:
+            self._open_empty_heading = []
+
+        if tag not in self.VOID_ELEMENTS:
+            self.stack.append((tag, attributes))
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "label" and self._open_labels:
+            self._open_labels.pop()
+        elif tag == "thead":
+            self._thead_depth -= 1
+        elif tag == "caption":
+            self._open_caption = None
+        elif tag == "table":
+            self._open_table = None
+        elif tag in {"h2", "h3"} and self._open_empty_heading is not None:
+            heading = "".join(self._open_empty_heading).strip()
+            if heading:
+                self.empty_state_headings.append(heading)
+            self._open_empty_heading = None
+
+        if self.stack:
+            for index in range(len(self.stack) - 1, -1, -1):
+                open_tag, attributes = self.stack[index]
+                if open_tag == tag:
+                    self.stack = self.stack[:index]
+                    if "empty-state" in (
+                        attributes.get("class") or ""
+                    ).split():
+                        self._empty_state_depth -= 1
+                    break
+
+    def handle_data(self, data: str) -> None:
+        if any(tag == "title" for tag, _ in self.stack):
+            self.title_parts.append(data)
+        for label in self._open_labels:
+            label["text"].append(data)
+        if self._open_caption is not None:
+            self._open_caption.append(data)
+        if self._open_empty_heading is not None:
+            self._open_empty_heading.append(data)
+
+    @property
+    def title(self) -> str:
+        return "".join(self.title_parts).strip()
+
+    def labelled_control_names(self) -> set[str]:
+        labelled: set[str] = set()
+        for label in self.labels:
+            if "".join(label["text"]).strip():
+                labelled.update(name for name in label["controls"] if name)
+        return labelled
 
 
 class RouteTests(unittest.TestCase):
@@ -48,6 +179,144 @@ class RouteTests(unittest.TestCase):
                 response = self.client.get(path)
                 self.assertEqual(response.status_code, 200)
                 self.assertIn(b"Immunisation Lens", response.data)
+
+    def test_all_six_pages_have_one_named_document_shell(self) -> None:
+        paths = (
+            "/",
+            "/mission",
+            "/vaccinations?antigen=MCV2&year=2010",
+            "/infections?economy=3&infection=MEA&year=2022",
+            "/vaccination-improvement"
+            "?antigen=MCV1&start_year=2000&end_year=2024&limit=10",
+            "/infection-benchmark?infection=MEA&year=2020",
+        )
+
+        for path in paths:
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                document = SemanticDocumentParser()
+                document.feed(response.get_data(as_text=True))
+
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(document.title)
+                self.assertEqual(len(document.tag_attributes.get("h1", [])), 1)
+                self.assertEqual(
+                    document.tag_attributes.get("nav"),
+                    [{
+                        "class": "site-nav",
+                        "id": "site-navigation",
+                        "aria-label": "Primary navigation",
+                    }],
+                )
+                self.assertEqual(
+                    document.tag_attributes.get("main"),
+                    [{"id": "main-content"}],
+                )
+
+    def test_analytical_controls_and_tables_have_accessible_names(self) -> None:
+        cases = (
+            (
+                "/vaccinations?antigen=MCV2&year=2010",
+                {"antigen", "year", "country", "region", "sort", "direction"},
+                2,
+            ),
+            (
+                "/infections?economy=3&infection=MEA&year=2022",
+                {"economy", "infection", "year", "search", "sort", "direction"},
+                2,
+            ),
+            (
+                "/vaccination-improvement"
+                "?antigen=MCV1&start_year=2000&end_year=2024&limit=10",
+                {"antigen", "start_year", "end_year", "limit", "sort", "direction"},
+                1,
+            ),
+            (
+                "/infection-benchmark?infection=MEA&year=2020",
+                {"infection", "year"},
+                1,
+            ),
+        )
+
+        for path, expected_controls, expected_table_count in cases:
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                document = SemanticDocumentParser()
+                document.feed(response.get_data(as_text=True))
+
+                self.assertEqual(
+                    document.labelled_control_names(), expected_controls
+                )
+                self.assertEqual(len(document.tables), expected_table_count)
+                for table in document.tables:
+                    self.assertTrue("".join(table["caption"]).strip())
+                    self.assertTrue(table["column_header_scopes"])
+                    self.assertTrue(
+                        all(
+                            scope == "col"
+                            for scope in table["column_header_scopes"]
+                        )
+                    )
+                    wrapper = table["wrapper"]
+                    self.assertEqual(wrapper.get("tabindex"), "0")
+                    self.assertEqual(wrapper.get("role"), "region")
+                    self.assertTrue((wrapper.get("aria-label") or "").strip())
+
+    def test_empty_results_use_descriptive_headings(self) -> None:
+        cases = (
+            (
+                "/vaccinations"
+                "?antigen=MCV2&year=2010&country=KNA&region=TEA",
+                {"No regional data", "No matching records"},
+            ),
+            (
+                "/infections"
+                "?economy=3&infection=MEA&year=2022&search=no-such-country",
+                {"No matching countries"},
+            ),
+        )
+
+        for path, expected_headings in cases:
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                document = SemanticDocumentParser()
+                document.feed(response.get_data(as_text=True))
+
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(
+                    expected_headings.issubset(set(document.empty_state_headings))
+                )
+
+        with self.app.app_context():
+            database = get_db()
+            database.execute(
+                "DELETE FROM Vaccination WHERE antigen = ? AND year IN (?, ?)",
+                ("MCV1", 2000, 2024),
+            )
+            database.execute(
+                "DELETE FROM InfectionData WHERE inf_type = ? AND year = ?",
+                ("MEA", 2020),
+            )
+            database.commit()
+
+        for path, expected_heading in (
+            (
+                "/vaccination-improvement"
+                "?antigen=MCV1&start_year=2000&end_year=2024&limit=10",
+                "No positive improvement found",
+            ),
+            (
+                "/infection-benchmark?infection=MEA&year=2020",
+                "No benchmark available",
+            ),
+        ):
+            with self.subTest(path=path):
+                response = self.client.get(path)
+                document = SemanticDocumentParser()
+                document.feed(response.get_data(as_text=True))
+
+                self.assertEqual(response.status_code, 200)
+                self.assertIn(expected_heading, document.empty_state_headings)
 
     def test_shared_shell_has_accessible_navigation_and_no_js_dependency(self) -> None:
         response = self.client.get("/")
@@ -233,7 +502,7 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"MCV2 in 2010", response.data)
         self.assertIn(b"1 country meeting target", response.data)
         self.assertIn(b"Regional target summary", response.data)
-        self.assertEqual(response.data.count(b'<div class="table-shell" tabindex="0">'), 2)
+        self.assertEqual(response.data.count(b'class="table-shell"'), 2)
         self.assertIn(b"Regional coverage target results", response.data)
         self.assertIn(b"Countries meeting the 90% coverage target", response.data)
         self.assertEqual(incompatible_response.status_code, 200)
