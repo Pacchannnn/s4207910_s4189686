@@ -260,7 +260,7 @@ tbody tr:last-child td { border-bottom: 0; }
   .page-intro h1 { font-size: 36px; }
   .lead { font-size: 17px; }
   .filter-form.five-columns, .filter-form.improvement-form, .filter-form.benchmark-form { grid-template-columns: 1fr; }
-  .sort-pair { grid-template-columns: 1fr 1fr; }
+  .sort-pair { grid-template-columns: 1fr; }
   .team-row { grid-template-columns: 34px 1fr; padding-block: 18px; }
   .team-row strong { grid-column: 2; text-align: left; }
   .metric-strip { grid-template-columns: 1fr; }

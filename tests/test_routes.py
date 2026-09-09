@@ -42,6 +42,7 @@ class SemanticDocumentParser(HTMLParser):
         self.stack: list[tuple[str, dict[str, str | None]]] = []
         self.tag_attributes: dict[str, list[dict[str, str | None]]] = {}
         self.title_parts: list[str] = []
+        self.controls: list[dict[str, str | None]] = []
         self.labels: list[dict[str, object]] = []
         self._open_labels: list[dict[str, object]] = []
         self.tables: list[dict[str, object]] = []
@@ -59,12 +60,18 @@ class SemanticDocumentParser(HTMLParser):
         self.tag_attributes.setdefault(tag, []).append(attributes)
 
         if tag == "label":
-            label: dict[str, object] = {"text": [], "controls": []}
+            label: dict[str, object] = {
+                "text": [],
+                "controls": [],
+                "for": attributes.get("for"),
+            }
             self.labels.append(label)
             self._open_labels.append(label)
 
-        if tag in {"input", "select", "textarea"} and self._open_labels:
-            self._open_labels[-1]["controls"].append(attributes.get("name"))
+        if tag in {"input", "select", "textarea"}:
+            self.controls.append(attributes)
+            if self._open_labels:
+                self._open_labels[-1]["controls"].append(attributes.get("name"))
 
         if tag == "thead":
             self._thead_depth += 1
@@ -141,10 +148,21 @@ class SemanticDocumentParser(HTMLParser):
 
     def labelled_control_names(self) -> set[str]:
         labelled: set[str] = set()
+        controls_by_id = {
+            control["id"]: control["name"]
+            for control in self.controls
+            if control.get("id") and control.get("name")
+        }
         for label in self.labels:
             if "".join(label["text"]).strip():
                 labelled.update(name for name in label["controls"] if name)
+                labelled_control = controls_by_id.get(label["for"])
+                if labelled_control:
+                    labelled.add(labelled_control)
         return labelled
+
+    def control_names(self) -> set[str]:
+        return {control["name"] for control in self.controls if control.get("name")}
 
 
 class RouteTests(unittest.TestCase):
@@ -244,6 +262,7 @@ class RouteTests(unittest.TestCase):
                 document = SemanticDocumentParser()
                 document.feed(response.get_data(as_text=True))
 
+                self.assertEqual(document.control_names(), expected_controls)
                 self.assertEqual(
                     document.labelled_control_names(), expected_controls
                 )
@@ -261,6 +280,19 @@ class RouteTests(unittest.TestCase):
                     self.assertEqual(wrapper.get("tabindex"), "0")
                     self.assertEqual(wrapper.get("role"), "region")
                     self.assertTrue((wrapper.get("aria-label") or "").strip())
+
+    def test_phone_styles_stack_every_filter_control_in_one_column(self) -> None:
+        response = self.client.get("/static/css/styles.css")
+        stylesheet = response.get_data(as_text=True)
+        status_code = response.status_code
+        response.close()
+        phone_rules = stylesheet[stylesheet.index("@media (max-width: 640px)") :]
+
+        self.assertEqual(status_code, 200)
+        self.assertRegex(
+            phone_rules,
+            r"\.sort-pair\s*\{\s*grid-template-columns:\s*1fr;\s*\}",
+        )
 
     def test_empty_results_use_descriptive_headings(self) -> None:
         cases = (
