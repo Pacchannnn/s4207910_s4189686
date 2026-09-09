@@ -4,6 +4,7 @@ import re
 import shutil
 import tempfile
 import unittest
+from collections import Counter
 from html import escape
 from html.parser import HTMLParser
 from pathlib import Path
@@ -42,7 +43,7 @@ class SemanticDocumentParser(HTMLParser):
         self.stack: list[tuple[str, dict[str, str | None]]] = []
         self.tag_attributes: dict[str, list[dict[str, str | None]]] = {}
         self.title_parts: list[str] = []
-        self.controls: list[dict[str, str | None]] = []
+        self.controls: list[dict[str, object]] = []
         self.labels: list[dict[str, object]] = []
         self._open_labels: list[dict[str, object]] = []
         self.tables: list[dict[str, object]] = []
@@ -69,9 +70,15 @@ class SemanticDocumentParser(HTMLParser):
             self._open_labels.append(label)
 
         if tag in {"input", "select", "textarea"}:
-            self.controls.append(attributes)
+            control: dict[str, object] = {
+                "attributes": attributes,
+                "wrapping_label": self._open_labels[-1]
+                if self._open_labels
+                else None,
+            }
+            self.controls.append(control)
             if self._open_labels:
-                self._open_labels[-1]["controls"].append(attributes.get("name"))
+                self._open_labels[-1]["controls"].append(control)
 
         if tag == "thead":
             self._thead_depth += 1
@@ -135,8 +142,13 @@ class SemanticDocumentParser(HTMLParser):
     def handle_data(self, data: str) -> None:
         if any(tag == "title" for tag, _ in self.stack):
             self.title_parts.append(data)
-        for label in self._open_labels:
-            label["text"].append(data)
+        inside_form_control = any(
+            tag in {"input", "select", "textarea", "option"}
+            for tag, _ in self.stack
+        )
+        if not inside_form_control:
+            for label in self._open_labels:
+                label["text"].append(data)
         if self._open_caption is not None:
             self._open_caption.append(data)
         if self._open_empty_heading is not None:
@@ -146,23 +158,39 @@ class SemanticDocumentParser(HTMLParser):
     def title(self) -> str:
         return "".join(self.title_parts).strip()
 
-    def labelled_control_names(self) -> set[str]:
-        labelled: set[str] = set()
-        controls_by_id = {
-            control["id"]: control["name"]
-            for control in self.controls
-            if control.get("id") and control.get("name")
-        }
-        for label in self.labels:
-            if "".join(label["text"]).strip():
-                labelled.update(name for name in label["controls"] if name)
-                labelled_control = controls_by_id.get(label["for"])
-                if labelled_control:
-                    labelled.add(labelled_control)
-        return labelled
+    def control_names(self) -> tuple[str | None, ...]:
+        return tuple(
+            control["attributes"].get("name") for control in self.controls
+        )
 
-    def control_names(self) -> set[str]:
-        return {control["name"] for control in self.controls if control.get("name")}
+    def unlabelled_controls(self) -> list[dict[str, object]]:
+        control_ids = [
+            control["attributes"].get("id") for control in self.controls
+        ]
+        id_counts = Counter(control_id for control_id in control_ids if control_id)
+        explicitly_labelled_ids = {
+            label["for"]
+            for label in self.labels
+            if label["for"] and "".join(label["text"]).strip()
+        }
+        unlabelled: list[dict[str, object]] = []
+
+        for control in self.controls:
+            wrapping_label = control["wrapping_label"]
+            has_visible_wrapping_label = bool(
+                wrapping_label
+                and "".join(wrapping_label["text"]).strip()
+            )
+            control_id = control["attributes"].get("id")
+            has_explicit_label = bool(
+                control_id
+                and id_counts[control_id] == 1
+                and control_id in explicitly_labelled_ids
+            )
+            if not has_visible_wrapping_label and not has_explicit_label:
+                unlabelled.append(control)
+
+        return unlabelled
 
 
 class RouteTests(unittest.TestCase):
@@ -235,23 +263,30 @@ class RouteTests(unittest.TestCase):
         cases = (
             (
                 "/vaccinations?antigen=MCV2&year=2010",
-                {"antigen", "year", "country", "region", "sort", "direction"},
+                ("antigen", "year", "country", "region", "sort", "direction"),
                 2,
             ),
             (
                 "/infections?economy=3&infection=MEA&year=2022",
-                {"economy", "infection", "year", "search", "sort", "direction"},
+                ("economy", "infection", "year", "search", "sort", "direction"),
                 2,
             ),
             (
                 "/vaccination-improvement"
                 "?antigen=MCV1&start_year=2000&end_year=2024&limit=10",
-                {"antigen", "start_year", "end_year", "limit", "sort", "direction"},
+                (
+                    "antigen",
+                    "start_year",
+                    "end_year",
+                    "limit",
+                    "sort",
+                    "direction",
+                ),
                 1,
             ),
             (
                 "/infection-benchmark?infection=MEA&year=2020",
-                {"infection", "year"},
+                ("infection", "year"),
                 1,
             ),
         )
@@ -263,9 +298,7 @@ class RouteTests(unittest.TestCase):
                 document.feed(response.get_data(as_text=True))
 
                 self.assertEqual(document.control_names(), expected_controls)
-                self.assertEqual(
-                    document.labelled_control_names(), expected_controls
-                )
+                self.assertEqual(document.unlabelled_controls(), [])
                 self.assertEqual(len(document.tables), expected_table_count)
                 for table in document.tables:
                     self.assertTrue("".join(table["caption"]).strip())
@@ -280,6 +313,22 @@ class RouteTests(unittest.TestCase):
                     self.assertEqual(wrapper.get("tabindex"), "0")
                     self.assertEqual(wrapper.get("role"), "region")
                     self.assertTrue((wrapper.get("aria-label") or "").strip())
+
+    def test_semantic_parser_checks_each_control_instance_for_a_label(self) -> None:
+        document = SemanticDocumentParser()
+        document.feed(
+            '<label>Year<select name="year"><option>2024</option></select></label>'
+            '<input name="year"><input>'
+        )
+
+        self.assertEqual(document.control_names(), ("year", "year", None))
+        self.assertEqual(
+            [
+                control["attributes"].get("name")
+                for control in document.unlabelled_controls()
+            ],
+            ["year", None],
+        )
 
     def test_phone_styles_stack_every_filter_control_in_one_column(self) -> None:
         response = self.client.get("/static/css/styles.css")
