@@ -1,7 +1,7 @@
 # Responsive, Accessibility, and Visual Verification
 
-**Date:** 9 September 2026  
-**Task baseline:** `e4c1068`  
+**Date:** 9 September 2026
+**Task baseline:** `e4c1068`
 **Application:** Flask/Waitress application served locally from `python app.py`
 
 This record covers the six required routes, validation and empty states, semantic HTML, keyboard operation, reduced motion, and layouts at the three required viewport sizes. Screenshots were generated in an isolated temporary directory and deliberately not added to the repository.
@@ -34,7 +34,7 @@ All screenshots listed below were personally inspected. Automated DOM measuremen
 |---|---|---|---|---|---|
 | `/` | none | Pass | Pass | Pass | Hero remains legible; four cards move from four to two to one column; exploration and latest-year layouts collapse without overlap. |
 | `/mission` | none | Pass | Pass | Pass | Intro changes from two columns to one; usage steps and persona content stack cleanly; navigation remains available. |
-| `/vaccinations` | `antigen=MCV2&year=2010&sort=coverage&direction=desc` | Pass | Pass | Pass | Six controls render in one row, then three columns, then one column (sort/direction remain a usable pair); metric strip changes 4/2/1 columns; both complete tables scroll only inside their wrappers. |
+| `/vaccinations` | `antigen=MCV2&year=2010&sort=coverage&direction=desc` | Pass | Pass | Pass | Six controls render in one row, then three columns, then one column; metric strip changes 4/2/1 columns; both complete tables scroll only inside their wrappers. |
 | `/infections` | `economy=3&infection=MEA&year=2022&sort=rate&direction=desc` | Pass | Pass | Pass | Filter and metric grids collapse correctly; both complete tables retain all columns and use local horizontal overflow. |
 | `/vaccination-improvement` | `antigen=MCV1&start_year=2000&end_year=2024&limit=10&sort=improvement&direction=desc` | Pass | Pass | Pass | Comparison controls and methodology panel collapse cleanly; all eight ranked-result columns remain in the scrollable table. |
 | `/infection-benchmark` | `infection=MEA&year=2020` | Pass | Pass | Pass | Benchmark summary changes from three columns to one; the global-first comparison preserves all six columns inside local overflow. |
