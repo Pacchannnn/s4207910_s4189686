@@ -1,40 +1,42 @@
 <!doctype html>
-<html lang="{{ 'zh-Hans' if language == 'zh' else language }}">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Explore vaccination coverage and reported infectious diseases across countries and years.">
-  <title>{{ _(title) }} | {{ _("Vaccination & Disease Data") }}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icons/brand.svg') }}">
+  <meta name="description" content="Explore global immunisation coverage and preventable infection data.">
+  <title>{% block title %}Immunisation Lens{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
-<body class="{{ 'page-home' if request.endpoint == 'pages.home' else 'page-mission' if request.endpoint == 'pages.mission' else 'page-data' }}">
-  <a class="skip-link" href="#main">Skip to content</a>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
   <header class="site-header">
-    <div class="header-shell wrap">
-      <a class="brand" href="{{ url_for('pages.home') }}"><span class="site-logo" aria-hidden="true"><img src="{{ url_for('static', filename='icons/brand.svg') }}" width="26" height="26" alt=""></span><span>{{ _("Vaccination & Disease Data") }}<span class="brand-subtitle">{{ _("Countries, years and comparisons") }}</span></span></a>
-      <nav class="navigation" aria-label="Main navigation">
-        {% for endpoint,label in navigation %}
-        <a href="{{ url_for(endpoint) }}"{% if request.endpoint == endpoint %} aria-current="page"{% endif %}>{{ _(label) }}</a>
-        {% endfor %}
+    <div class="nav-shell">
+      <a class="brand" href="{{ url_for('pages.home') }}" aria-label="Immunisation Lens home">
+        <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span>Immunisation Lens</span>
+      </a>
+      <nav class="site-nav" id="site-navigation" aria-label="Primary navigation">
+        <a href="{{ url_for('pages.home') }}" class="{{ 'active' if active_page == 'home' else '' }}">Overview</a>
+        <a href="{{ url_for('pages.vaccinations') }}" class="{{ 'active' if active_page == 'vaccinations' else '' }}">Vaccinations</a>
+        <a href="{{ url_for('pages.vaccination_improvement') }}" class="{{ 'active' if active_page == 'vaccination_improvement' else '' }}">Improvement</a>
       </nav>
-      <details class="language-picker">
-        <summary class="globe-trigger" aria-label="{{ _('Language') }}" title="{{ _('Language') }}">
-          <img src="{{ url_for('static', filename='icons/globe.svg') }}" width="24" height="24" alt="">
-        </summary>
-        <div class="language-menu">
-          {% for code, label in languages.items() %}
-          <a href="{{ url_for('choose_language', language=code, next=return_to) }}" lang="{{ 'zh-Hans' if code == 'zh' else code }}"{% if code == language %} aria-current="true"{% endif %}>{{ label }}<span aria-hidden="true">{{ code|upper }}</span></a>
-          {% endfor %}
-        </div>
-      </details>
     </div>
   </header>
-  <main id="main" class="wrap" tabindex="-1">{% if language != 'en' %}<p class="translation-note">{{ _('Interface translated; source descriptions and country names may remain in English.') }}</p>{% endif %}{% block content %}{% endblock %}</main>
+
+  <main id="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
   <footer class="site-footer">
-    <div class="wrap footer-grid">
-      <div><p class="footer-course">Python Programming Studio</p><p>s4207910 &amp; s4189686</p></div>
-      <div class="footer-links"><a href="{{ url_for('pages.mission') }}#data-notes">{{ _("Data source & definitions") }}</a><a href="#main">{{ _("Back to top") }} &uarr;</a></div>
+    <div class="content-shell footer-layout">
+      <div>
+        <strong>Immunisation Lens</strong>
+        <p>A neutral view of global vaccination and preventable infection data.</p>
+      </div>
+      <p>Source database: WHO-derived immunisation dataset, 2000-2024.</p>
     </div>
   </footer>
 </body>
