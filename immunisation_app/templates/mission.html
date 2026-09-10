@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Mission and Personas | Immunisation Lens{% endblock %}
+{% block content %}
+<section class="page-intro mission-intro">
+  <div class="content-shell intro-grid">
+    <div>
+      <p class="eyebrow">Mission and audience</p>
+      <h1>Evidence that informs without overstating.</h1>
+    </div>
+    <p class="lead">Our purpose is to help people investigate the impact of preventable infectious diseases through transparent, comparable and respectfully presented data.</p>
+  </div>
+</section>
+
+<section class="section band-teal" aria-labelledby="how-title">
+  <div class="content-shell">
+    <div class="section-heading split-heading light-heading">
+      <div>
+        <p class="eyebrow light">How to use the site</p>
+        <h2 id="how-title">Three layers of understanding</h2>
+      </div>
+      <p>The site supports quick orientation and deeper investigation without presenting association as causation.</p>
+    </div>
+    <ol class="use-steps">
+      <li><span>1</span><div><h3>Orient</h3><p>Start on this mission page to see the purpose of the site, the people it is built for and the team behind it.</p></div></li>
+      <li><span>2</span><div><h3>Focus</h3><p>Use the <a href="{{ url_for('pages.infections') }}">infection explorer</a> to compare reported cases and rates for one economic status, infection type and year.</p></div></li>
+      <li><span>3</span><div><h3>Deepen</h3><p>Place countries against a <a href="{{ url_for('pages.infection_benchmark') }}">weighted global infection rate</a> to see which report above the global average.</p></div></li>
+    </ol>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="personas-title">
+  <div class="content-shell">
+    <div class="section-heading split-heading">
+      <div><p class="eyebrow">Personas from SQLite</p><h2 id="personas-title">Who this experience serves</h2></div>
+      <p>These personas are stored in and retrieved from the project database.</p>
+    </div>
+    <div class="persona-grid">
+      {% for persona in personas %}
+      <article class="persona-card">
+        <div class="persona-topline"><span>{{ persona.role }}</span><span>{{ '%02d'|format(loop.index) }}</span></div>
+        <h3>{{ persona.name }}</h3>
+        <dl>
+          <div><dt>Goal</dt><dd>{{ persona.goal }}</dd></div>
+          <div><dt>Need</dt><dd>{{ persona.need }}</dd></div>
+          <div><dt>Supported by</dt><dd>{{ persona.app_feature }}</dd></div>
+        </dl>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="section section-rule" aria-labelledby="team-title">
+  <div class="content-shell two-column-section align-start">
+    <div class="section-heading compact-heading">
+      <p class="eyebrow">Project team</p>
+      <h2 id="team-title">The project team</h2>
+      <p>Names, student numbers and responsibilities are retrieved from the database rather than hardcoded in this page.</p>
+    </div>
+    <div class="team-list">
+      {% for member in members %}
+      <article class="team-row">
+        <span class="team-index">{{ '%02d'|format(loop.index) }}</span>
+        <div><h3>{{ member.name }}</h3><p>{{ member.student_number }}</p></div>
+        <strong>{{ member.responsibility }}</strong>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}
+
