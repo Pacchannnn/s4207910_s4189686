@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Explore global immunisation coverage and preventable infection data.">
+  <meta name="description" content="Explore reported preventable infection data by economic status and against a weighted global benchmark.">
   <title>{% block title %}Immunisation Lens{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,16 +14,13 @@
   <a class="skip-link" href="#main-content">Skip to content</a>
   <header class="site-header">
     <div class="nav-shell">
-      <a class="brand" href="{{ url_for('pages.home') }}" aria-label="Immunisation Lens home">
+      <a class="brand" href="{{ url_for('pages.mission') }}" aria-label="Immunisation Lens home">
         <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
         <span>Immunisation Lens</span>
       </a>
       <nav class="site-nav" id="site-navigation" aria-label="Primary navigation">
-        <a href="{{ url_for('pages.home') }}" class="{{ 'active' if active_page == 'home' else '' }}">Overview</a>
         <a href="{{ url_for('pages.mission') }}" class="{{ 'active' if active_page == 'mission' else '' }}">Mission</a>
-        <a href="{{ url_for('pages.vaccinations') }}" class="{{ 'active' if active_page == 'vaccinations' else '' }}">Vaccinations</a>
         <a href="{{ url_for('pages.infections') }}" class="{{ 'active' if active_page == 'infections' else '' }}">Infections</a>
-        <a href="{{ url_for('pages.vaccination_improvement') }}" class="{{ 'active' if active_page == 'vaccination_improvement' else '' }}">Improvement</a>
         <a href="{{ url_for('pages.infection_benchmark') }}" class="{{ 'active' if active_page == 'infection_benchmark' else '' }}">Benchmark</a>
       </nav>
     </div>
@@ -37,7 +34,7 @@
     <div class="content-shell footer-layout">
       <div>
         <strong>Immunisation Lens</strong>
-        <p>A neutral view of global vaccination and preventable infection data.</p>
+        <p>A neutral view of reported preventable infections worldwide.</p>
       </div>
       <p>Source database: WHO-derived immunisation dataset, 2000-2024.</p>
     </div>

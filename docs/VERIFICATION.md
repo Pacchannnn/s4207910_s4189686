@@ -1,143 +1,54 @@
-# Responsive, Accessibility, and Visual Verification
+# Verification
 
-**Date:** 9 September 2026
-**Task baseline:** `e4c1068`
-**Application:** Flask/Waitress application served locally from `python app.py`
+## Verification after Sub-Task A removal — 10 September 2026
 
-This record covers the six required routes, validation and empty states, semantic HTML, keyboard operation, reduced motion, and layouts at the three required viewport sizes. Screenshots were generated in an isolated temporary directory and deliberately not added to the repository.
+The Sub-Task A pages were removed from this submission. Verification records that only evidenced those pages (the six-route browser sweep, the vaccination coverage and improvement numerical audits, and the earlier suite counts of 51/54/57/69/73 tests) were removed with them. The results below were produced after the removal and describe the current three-page application.
 
-## Automated semantic verification
+- Full suite: `python -B -m unittest discover -s tests -q` — **47/47 pass**. Twenty-six tests that covered only the removed pages were deleted; the mixed cross-page tests were narrowed to the remaining routes rather than dropped.
+- Route sweep with the Flask test client: 379 requests returned HTTP 200 — every economy/infection/year combination on `/infections` (3 infection types x 25 years x 4 economic statuses), every infection/year combination on `/infection-benchmark`, the three default pages and the stylesheet. `/mission` returns 301 to `/`; `/vaccinations`, `/vaccination-improvement` and any unknown address return the branded 404.
+- Rendered pages contain zero `<script>` elements; all filter forms compute `method="get"`, so results remain shareable through the URL.
+- Spot check preserved from before the removal: `/infection-benchmark?infection=MEA&year=2020` still reports **28 countries above the global rate** with the global row first, confirming that no benchmark calculation changed.
+- Browser check at desktop width against `python app.py`: the Mission, Infections and Benchmark pages render without page-level horizontal overflow after the unused Sub-Task A rules were deleted from `styles.css`. Every CSS class that remains in the stylesheet is still referenced by a template, and every class referenced by a template that had a rule still has one.
+- `PRAGMA integrity_check` on the tracked database: `ok`.
 
-The route suite renders real Flask responses and parses the returned HTML with the standard-library `HTMLParser`. The Task 9 checks verify:
+### Database change in this pass
 
-- exactly one `<h1>`, a non-empty `<title>`, one labelled primary `<nav>`, and one `#main-content` landmark on every required page;
-- visible wrapping labels for every analytical control;
-- a non-empty caption, `scope="col"` column headers, and a focusable, named `role="region"` wrapper for every rendered result table;
-- a labelled `role="alert"` for invalid filters; and
-- descriptive headings for vaccination, infection, improvement, and benchmark empty states.
+The `ProjectPersona` rows were updated so each persona's "supported by" text names features that still exist. No source data table was touched.
 
-TDD evidence:
+| | SHA-256 |
+|---|---|
+| Before the persona update | `B1BD2B9BD95E246906362AB71B272AADD861C2F66B0CED62EADAE9D42326A6BF` |
+| Current | `5EF31AEC54ADD4C266197D17362BBB844636CBC849459974ECA8448A3E364E67` |
 
-1. RED: the new cross-page shell and empty-state checks passed, while the analytical-table test failed for vaccination because its headers lacked `scope="col"`, and for vaccination/infection/improvement because wrappers lacked an accessible region name.
-2. GREEN: the vaccination headers were scoped and the previously unnamed table wrappers received specific `role="region"`/`aria-label` values. The focused three-test run passed, followed by all 27 route tests.
-3. An older vaccination test was loosened from an exact attribute-order fragment to counting `.table-shell` instances, so it continues testing the two-table behavior without rejecting added accessibility attributes.
-4. Review RED/GREEN: the prior label parser collapsed duplicate control names and discarded unnamed controls. The adversarial fragment containing one labelled `year` select, an extra unlabelled `year` input, and an unnamed input failed against commit `8b7e34a`; the instance-based parser identifies both unlabelled inputs and the focused regression passes. A second adversarial fragment proved that uniqueness must include every document element: a non-control element sharing the target ID now invalidates the explicit label association. Visible wrapping-label text excludes option content, while explicit labels require a unique document-wide matching control ID.
-
-## Browser method
-
-The Codex in-app browser was initially reported, but after the interrupted run its required reset and rediscovery returned `browsers: []`. The fallback used the installed Chrome 152.0.7977.77 in headless mode with an isolated temporary profile and the Chrome DevTools Protocol against the live localhost application. This provided exact viewport emulation, screenshots, computed layout measurements, keyboard input, focus styles, and reduced-motion emulation without touching the user's normal browser profile.
-
-All screenshots listed below were personally inspected. Automated DOM measurements accompanied each capture and checked viewport width, document scroll width, grid columns, control bounds, table-wrapper bounds/scroll width, page scripts, form method, alert text, and empty-state headings.
-
-## Required route sweep
-
-| Route | Representative query | 1440x900 | 768x1024 | 375x812 | Evidence observed |
-|---|---|---|---|---|---|
-| `/` | none | Pass | Pass | Pass | Hero remains legible; four cards move from four to two to one column; exploration and latest-year layouts collapse without overlap. |
-| `/mission` | none | Pass | Pass | Pass | Intro changes from two columns to one; usage steps and persona content stack cleanly; navigation remains available. |
-| `/vaccinations` | `antigen=MCV2&year=2010&sort=coverage&direction=desc` | Pass | Pass | Pass | Six controls render in one row, then three columns, then one column; metric strip changes 4/2/1 columns; both complete tables scroll only inside their wrappers. |
-| `/infections` | `economy=3&infection=MEA&year=2022&sort=rate&direction=desc` | Pass | Pass | Pass | Filter and metric grids collapse correctly; both complete tables retain all columns and use local horizontal overflow. |
-| `/vaccination-improvement` | `antigen=MCV1&start_year=2000&end_year=2024&limit=10&sort=improvement&direction=desc` | Pass | Pass | Pass | Comparison controls and methodology panel collapse cleanly; all eight ranked-result columns remain in the scrollable table. |
-| `/infection-benchmark` | `infection=MEA&year=2020` | Pass | Pass | Pass | Benchmark summary changes from three columns to one; the global-first comparison preserves all six columns inside local overflow. |
-
-Measured responsive evidence:
-
-- No tested route had page-level horizontal overflow. Desktop document width was 1425px inside the 1440px viewport (the remaining width is the vertical scrollbar); tablet and phone document widths were exactly 768px and 375px.
-- At 375px, content and controls stayed between 14px and 361px. At 768px they stayed between 20px and 748px.
-- At 375px, result wrappers measured 345px client width while complete tables measured at least 760px (up to 790px for vaccination detail). At 768px, wrappers measured 726px and tables remained locally scrollable where wider. No columns were hidden or removed.
-- The narrow primary navigation is always rendered and horizontally scrollable (347px client width, 533px content width at 375px). Keyboard focus automatically exposed the off-screen Improvement and Benchmark links.
-
-## Validation and empty-state sweep
-
-Each state was captured and measured at 1440x900, 768x1024, and 375x812.
-
-| State | Route/query | Result |
-|---|---|---|
-| Malformed year and invalid sort/direction | `/infections?economy=3&infection=MEA&year=twenty&sort=unknown&direction=sideways` | Pass: HTTP page remained branded with no traceback; labelled alert showed all three neutral instructions; safe database defaults were selected; no overflow. |
-| Reversed years | `/vaccination-improvement?antigen=MCV1&start_year=2024&end_year=2000&limit=10` | Pass: both user-selected years and count were retained; labelled `Check the comparison` alert explained the order requirement; no result calculation or overflow. |
-| Impossible country search | `/infections?economy=3&infection=MEA&year=2022&search=no-such-country` | Pass: search text was retained; economy summary remained available; `No matching countries` heading and guidance replaced only the detail result; no overflow. |
-| No benchmark source data | `/infection-benchmark?infection=MEA&year=2020` against a temporary database copy with those source rows removed | Pass: `No benchmark available` heading and neutral guidance rendered, no false global card or null rate appeared, and no overflow occurred. The tracked database was not changed. |
-
-## Keyboard, motion, and no-JavaScript checks
-
-- At 375x812 on the vaccination route, injected Tab events produced this order: skip link; brand; all six navigation links; antigen; year; country; region; sort; direction; submit button; regional table wrapper; country table wrapper. Every stop computed a solid focus outline.
-- The first Tab made `Skip to content` visible at `(16, 16)`; the link targets the unique `#main-content` landmark.
-- Focus reached both horizontally scrollable table regions. Each has `tabindex="0"`, `role="region"`, and a page-specific accessible name.
-- With `prefers-reduced-motion: reduce`, the media query matched, computed HTML `scroll-behavior` was `auto`, and nonessential animation/transition durations computed to `0.01ms`.
-- Every rendered page contained zero `<script>` elements. All four analytical forms computed `method="get"`, every navigation destination is an ordinary link, and representative query URLs returned complete server-rendered results.
-
-## Contrast spot checks
-
-WCAG relative-luminance calculations for the delivered solid-color pairs were:
-
-| Pair | Contrast |
-|---|---:|
-| `--ink` on white | 17.30:1 |
-| `--muted` on white | 5.67:1 |
-| white on `--red` button | 5.19:1 |
-| white on `--teal` | 6.08:1 |
-| white on `--teal-dark` | 9.29:1 |
-| success text/background | 5.26:1 |
-| warning text/background | 5.69:1 |
-| neutral status text/background | 5.88:1 |
-
-These spot checks exceed the 4.5:1 normal-text threshold. Status meaning is also written in text rather than communicated by color alone.
+`immunisation_app/db.py` seeds the same persona text, so a database that has not yet been initialised receives the current wording.
 
 ## Database quality snapshot
 
-The tracked SQLite database was queried directly during this verification:
+The tracked SQLite database was queried directly during this verification. Only the tables the remaining pages read are listed.
 
 | Check | Count/result |
 |---|---:|
-| Vaccination rows | 24,211 |
-| Missing or blank reported coverage | 5,415 |
-| Missing or non-positive target values | 153 |
-| Reported coverage above 100% | 1,312 |
-| Duplicate vaccination `(country, antigen, year)` groups | 0 |
+| Infection rows | 15,525 |
+| Infection types | 3 (Measles, Rubella, Pertussis) |
+| Economic statuses | 4 (High Income, Upper Middle Income, Lower Middle Income, Low Income) |
+| Countries and areas | 217 |
+| Countries with a blank economy mapping | 2 |
 | Duplicate infection `(country, infection, year)` groups | 0 |
 | Duplicate population `(country, year)` groups | 0 |
 | Null or non-positive population rows | 0 |
+| Infection rows with no matching same-year population row | 0 |
 | Available year range | 2000-2024 |
 | Project team identities | Le Chi Bach (`s4207910`); Nguyen Tran Ba Trong (`s4189686`) |
 
-The vaccination page retains above-100% values and labels them; it does not cap them. During Task 9, the exact team-name/student-number checkpoint was still blocked and the placeholder rows were not altered; Task 10 resolves that checkpoint below.
+The two countries with a blank economy mapping (Ethiopia and Venezuela) are excluded from the economy view rather than reassigned to a group, and the methodology note on that page states this. They still appear in the global benchmark, which does not require an economy match.
 
-## Final requirements and submission audit
+## Scope of this verification
 
-Task 10 began from commit `e3f1fdc`. All 28 rows in `docs/REQUIREMENTS_MATRIX.md` were checked against their named view, query, template, and test evidence. Every mandatory row is Met; none remains Partial or Blocked.
+This is automated Flask and SQLite verification plus a desktop browser check. It is not a screen-reader audit, a multi-viewport sweep or a medical-validity review. Passing tests are not proof of the absence of all possible defects.
 
-Identity TDD evidence:
-
-1. RED: the exact query and Mission-route regressions both failed against the tracked placeholder rows. The query returned `sID1` and `sID2`, and the rendered route did not contain Le Chi Bach.
-2. GREEN: the tracked database was updated with a parameterized two-row statement and the bootstrap constants were aligned. The exact query mapping, route output, placeholder rejection, existing database-backed Mission behavior, and initialisation idempotence checks passed.
-3. Bootstrap RED/GREEN: deleting both temporary team rows and re-running project-table initialisation failed with the old `TEAM_MEMBERS` constants, then passed after the exact identities were restored. This proves a newly populated project table receives the same submission mapping as the tracked database.
-
-The final Flask test-client smoke requested each route with defaults and, where the route defines filters, one representative valid query. `/` and `/mission` have no filter controls, so their second checks repeated the canonical route with a second requirement-specific assertion.
-
-| Route | Default check | Representative valid check | Requirement-specific evidence |
-|---|---|---|---|
-| `/` | HTTP 200 | Canonical route repeated; filters not applicable | Four database facts and the overview-to-analysis paths rendered. |
-| `/mission` | HTTP 200 | Canonical route repeated; filters not applicable | Three usage layers and exact database-backed team identities rendered without placeholders. |
-| `/vaccinations` | HTTP 200 | `antigen=MCV2&year=2010&sort=coverage&direction=desc` | Regional summary and 90%-target country result content rendered. |
-| `/infections` | HTTP 200 | `economy=3&infection=MEA&year=2022&sort=rate&direction=desc` | All-economy summary and selected-economy metrics rendered. |
-| `/vaccination-improvement` | HTTP 200 | `antigen=MCV1&start_year=2000&end_year=2024&limit=10&sort=improvement&direction=desc` | Complete positive-improvement comparison rendered. |
-| `/infection-benchmark` | HTTP 200 | `infection=MEA&year=2020` | Global-first benchmark comparison rendered. |
-
-All 12 smoke responses contained the branded shell and `#main-content`, omitted a server traceback, and included their requirement-specific marker.
-
-Pre-commit verification results:
-
-- `python -m unittest tests.test_queries tests.test_routes -v`: 48 tests passed.
-- `python -m unittest discover -s tests -v`: 51 tests passed.
-- `PRAGMA integrity_check`: `ok`; the tracked database returned exactly the two mapped team rows in member order.
-- `git diff --check`: exit 0 with no whitespace errors (Git emitted only the expected Windows LF-to-CRLF working-copy notices).
-- `git status --short --branch` showed only the six intended Task 10 files, and the 12-commit log confirmed the reviewed Task 5-9 history leading to the exact Task 10 baseline `e3f1fdc`.
-
-## Repeatable final commands
+## Repeatable commands
 
 ```powershell
-python -m unittest tests.test_routes -v
-python -m unittest discover -s tests -v
-git diff --check
-git status --short --branch
+python -B -m unittest discover -s tests -q
+python app.py
 ```

@@ -1,6 +1,17 @@
 from __future__ import annotations
 
 from typing import Any
+import math
+
+
+def parse_nonnegative_number(value: str) -> tuple[float | None, str | None]:
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None, "Numeric filter value must be a finite number at least zero."
+    if not math.isfinite(number) or number < 0:
+        return None, "Numeric filter value must be a finite number at least zero."
+    return number, None
 
 
 def parse_int(

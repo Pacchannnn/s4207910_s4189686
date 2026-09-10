@@ -213,15 +213,8 @@ class RouteTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
 
-    def test_all_six_required_pages_render(self) -> None:
-        paths = (
-            "/",
-            "/mission",
-            "/vaccinations",
-            "/infections",
-            "/vaccination-improvement",
-            "/infection-benchmark",
-        )
+    def test_all_three_required_pages_render(self) -> None:
+        paths = ("/", "/infections", "/infection-benchmark")
 
         for path in paths:
             with self.subTest(path=path):
@@ -229,14 +222,16 @@ class RouteTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 200)
                 self.assertIn(b"Immunisation Lens", response.data)
 
-    def test_all_six_pages_have_one_named_document_shell(self) -> None:
+    def test_legacy_mission_address_redirects_to_the_landing_route(self) -> None:
+        response = self.client.get("/mission")
+
+        self.assertEqual(response.status_code, 301)
+        self.assertTrue(response.headers["Location"].endswith("/"))
+
+    def test_all_three_pages_have_one_named_document_shell(self) -> None:
         paths = (
             "/",
-            "/mission",
-            "/vaccinations?antigen=MCV2&year=2010",
             "/infections?economy=3&infection=MEA&year=2022",
-            "/vaccination-improvement"
-            "?antigen=MCV1&start_year=2000&end_year=2024&limit=10",
             "/infection-benchmark?infection=MEA&year=2020",
         )
 
@@ -265,31 +260,13 @@ class RouteTests(unittest.TestCase):
     def test_analytical_controls_and_tables_have_accessible_names(self) -> None:
         cases = (
             (
-                "/vaccinations?antigen=MCV2&year=2010",
-                ("antigen", "year", "country", "region", "sort", "direction"),
-                2,
-            ),
-            (
                 "/infections?economy=3&infection=MEA&year=2022",
-                ("economy", "infection", "year", "search", "sort", "direction"),
+                ("economy", "infection", "year", "search", "numeric_column", "numeric_operator", "numeric_value", "sort", "direction"),
                 2,
-            ),
-            (
-                "/vaccination-improvement"
-                "?antigen=MCV1&start_year=2000&end_year=2024&limit=10",
-                (
-                    "antigen",
-                    "start_year",
-                    "end_year",
-                    "limit",
-                    "sort",
-                    "direction",
-                ),
-                1,
             ),
             (
                 "/infection-benchmark?infection=MEA&year=2020",
-                ("infection", "year"),
+                ("infection", "year", "sort", "direction"),
                 1,
             ),
         )
@@ -362,11 +339,6 @@ class RouteTests(unittest.TestCase):
     def test_empty_results_use_descriptive_headings(self) -> None:
         cases = (
             (
-                "/vaccinations"
-                "?antigen=MCV2&year=2010&country=KNA&region=TEA",
-                {"No regional data", "No matching records"},
-            ),
-            (
                 "/infections"
                 "?economy=3&infection=MEA&year=2022&search=no-such-country",
                 {"No matching countries"},
@@ -387,21 +359,12 @@ class RouteTests(unittest.TestCase):
         with self.app.app_context():
             database = get_db()
             database.execute(
-                "DELETE FROM Vaccination WHERE antigen = ? AND year IN (?, ?)",
-                ("MCV1", 2000, 2024),
-            )
-            database.execute(
                 "DELETE FROM InfectionData WHERE inf_type = ? AND year = ?",
                 ("MEA", 2020),
             )
             database.commit()
 
         for path, expected_heading in (
-            (
-                "/vaccination-improvement"
-                "?antigen=MCV1&start_year=2000&end_year=2024&limit=10",
-                "No positive improvement found",
-            ),
             (
                 "/infection-benchmark?infection=MEA&year=2020",
                 "No benchmark available",
@@ -423,55 +386,9 @@ class RouteTests(unittest.TestCase):
         self.assertNotIn(b'class="nav-toggle"', response.data)
         self.assertNotIn(b"js/app.js", response.data)
 
-    def test_home_renders_exactly_four_database_fact_cards(self) -> None:
-        response = self.client.get("/")
-
-        self.assertEqual(response.data.count(b'class="fact-card '), 4)
-        for value in (b"2000", b"2024", b"217", b"5", b"3"):
-            self.assertIn(value, response.data)
-
-    def test_home_hero_names_vaccination_coverage_and_preventable_infections(
-        self,
-    ) -> None:
-        response = self.client.get("/")
-
-        hero = re.search(rb'<section class="hero">(.*?)</section>', response.data, re.DOTALL)
-        self.assertIsNotNone(hero)
-        self.assertIn(b"vaccination coverage", hero.group(1))
-        self.assertIn(b"preventable infections", hero.group(1))
-
-    def test_home_fact_cards_follow_snapshot_database_changes(self) -> None:
-        with self.app.app_context():
-            database = get_db()
-            database.execute("INSERT INTO YearDate (YearID) VALUES (?)", (1999,))
-            database.commit()
-
-        response = self.client.get("/")
-        fact_cards = re.findall(
-            rb'<article class="fact-card [^"]+">(.*?)</article>',
-            response.data,
-            re.DOTALL,
-        )
-
-        self.assertEqual(len(fact_cards), 4)
-        self.assertIn(b"1999-2024", b"".join(fact_cards))
-
-        with self.app.app_context():
-            database = get_db()
-            database.execute("INSERT INTO YearDate (YearID) VALUES (2031)")
-            database.execute("INSERT INTO Country (CountryID, name) VALUES ('ZZZ', 'Fixture country')")
-            database.execute("INSERT INTO Antigen (AntigenID, name) VALUES ('TEST', 'Fixture antigen')")
-            database.execute("INSERT INTO Infection_Type (id, description) VALUES ('TST', 'Fixture')")
-            database.commit()
-        changed = self.client.get("/").data
-        values = re.findall(rb'<span class="fact-value">(.*?)</span>', changed)
-        self.assertEqual(values, [b"1999-2031", b"218", b"6", b"4"])
-
     def test_invalid_analytical_inputs_bypass_queries(self) -> None:
         for route, query, fields in (
-            ("/vaccinations", "get_vaccination_view", ("year", "antigen", "country", "region", "sort", "direction")),
             ("/infections", "get_infection_by_economy", ("year", "economy", "infection", "sort", "direction")),
-            ("/vaccination-improvement", "get_vaccination_improvements", ("start_year", "end_year", "limit", "antigen", "sort", "direction")),
             ("/infection-benchmark", "get_above_global_infections", ("year", "infection")),
         ):
             for field in fields:
@@ -480,34 +397,6 @@ class RouteTests(unittest.TestCase):
                     self.assertEqual(response.status_code, 200)
                     self.assertIn(b'role="alert"', response.data)
                     analytical_query.assert_not_called()
-
-    def test_improvement_alternate_sorts_do_not_claim_largest_ranks(self) -> None:
-        for sort in ("country", "start_rate", "end_rate", "improvement"):
-            for direction in ("asc", "desc"):
-                with self.subTest(sort=sort, direction=direction):
-                    response = self.client.get("/vaccination-improvement", query_string={
-                        "antigen": "MCV1", "start_year": 2000, "end_year": 2024,
-                        "limit": 3, "sort": sort, "direction": direction,
-                    })
-                    self.assertEqual(response.status_code, 200)
-                    self.assertIn(b"Positive vaccination-rate improvements", response.data)
-                    self.assertIn(b'<th scope="col">Position</th>', response.data)
-                    self.assertNotIn(b"Largest vaccination-rate improvements", response.data)
-
-    def test_home_links_to_both_explorers_and_both_analyses(self) -> None:
-        response = self.client.get("/")
-
-        for path in (
-            b"/vaccinations",
-            b"/infections",
-            b"/vaccination-improvement",
-            b"/infection-benchmark",
-        ):
-            with self.subTest(path=path):
-                self.assertIn(
-                    b'<a class="path-item" href="' + path + b'">',
-                    response.data,
-                )
 
     def test_mission_presents_perspective_guidance_and_database_content(self) -> None:
         with self.app.app_context():
@@ -551,7 +440,7 @@ class RouteTests(unittest.TestCase):
             personas = get_personas(database)
             members = get_team_members(database)
 
-        response = self.client.get("/mission")
+        response = self.client.get("/")
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"respectfully presented data", response.data)
@@ -573,7 +462,7 @@ class RouteTests(unittest.TestCase):
                 self.assertIn(escape(str(value)).encode(), response.data)
 
     def test_mission_renders_exact_database_backed_submission_identities(self) -> None:
-        response = self.client.get("/mission")
+        response = self.client.get("/")
 
         self.assertEqual(response.status_code, 200)
         for name, student_number in (
@@ -599,7 +488,7 @@ class RouteTests(unittest.TestCase):
         )
 
     def test_analytical_page_renders_a_labelled_methodology_note(self) -> None:
-        response = self.client.get("/vaccination-improvement")
+        response = self.client.get("/infection-benchmark?infection=MEA&year=2020")
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(
@@ -607,57 +496,9 @@ class RouteTests(unittest.TestCase):
             response.data,
         )
         self.assertIn(
-            b'<h2 id="methodology-title">Doses relative to population</h2>',
+            b'<h2 id="methodology-title">Why the benchmark is weighted</h2>',
             response.data,
         )
-
-    def test_vaccination_page_accepts_filters(self) -> None:
-        response = self.client.get(
-            "/vaccinations?antigen=MCV2&year=2010&sort=coverage&direction=desc"
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"MCV2", response.data)
-        self.assertIn(b"Regional target summary", response.data)
-
-    def test_vaccination_country_filter_shows_target_metrics_and_anomaly(self) -> None:
-        response = self.client.get(
-            "/vaccinations?antigen=MCV2&year=2010&country=KNA"
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"1 country meeting target", response.data)
-        self.assertIn(b"Countries meeting 90% target", response.data)
-        self.assertIn(b"Reported above 100%", response.data)
-
-    def test_vaccination_region_filter_limits_country_results(self) -> None:
-        response = self.client.get(
-            "/vaccinations?antigen=MCV2&year=2010&region=TLA"
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"9 countries meeting target", response.data)
-        self.assertIn(b"Regional target summary", response.data)
-        self.assertIn(b"Reported above 100%", response.data)
-
-    def test_vaccination_country_and_region_filters_work_together(self) -> None:
-        response = self.client.get(
-            "/vaccinations?antigen=MCV2&year=2010&country=KNA&region=TLA"
-        )
-        incompatible_response = self.client.get(
-            "/vaccinations?antigen=MCV2&year=2010&country=KNA&region=TEA"
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"MCV2 in 2010", response.data)
-        self.assertIn(b"1 country meeting target", response.data)
-        self.assertIn(b"Regional target summary", response.data)
-        self.assertEqual(response.data.count(b'class="table-shell"'), 2)
-        self.assertIn(b"Regional coverage target results", response.data)
-        self.assertIn(b"Countries meeting the 90% coverage target", response.data)
-        self.assertEqual(incompatible_response.status_code, 200)
-        self.assertIn(b"0 countries meeting target", incompatible_response.data)
-        self.assertIn(b"No regional data", incompatible_response.data)
 
     def test_infection_page_accepts_filters(self) -> None:
         response = self.client.get(
@@ -701,117 +542,6 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"Year must be a whole number", response.data)
         self.assertIn(b"Choose a valid sort field", response.data)
         self.assertIn(b"Choose a valid sort direction", response.data)
-
-    def test_invalid_improvement_years_show_validation_message(self) -> None:
-        response = self.client.get(
-            "/vaccination-improvement?antigen=MCV1&start_year=2024&end_year=2000&limit=10"
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"End year must be later than start year", response.data)
-
-    def test_improvement_limit_boundaries_are_accepted_and_retained(self) -> None:
-        for limit in (3, 50):
-            with self.subTest(limit=limit):
-                response = self.client.get(
-                    "/vaccination-improvement"
-                    f"?antigen=MCV1&start_year=2000&end_year=2024&limit={limit}"
-                )
-
-                self.assertEqual(response.status_code, 200)
-                self.assertIn(f'value="{limit}"'.encode(), response.data)
-                self.assertNotIn(b"Number of countries must be between", response.data)
-                self.assertLessEqual(response.data.count(b'class="rank-number"'), limit)
-
-    def test_improvement_rejects_out_of_range_equal_reversed_and_malformed_values(
-        self,
-    ) -> None:
-        cases = (
-            (
-                "start_year=2000&end_year=2024&limit=2",
-                b"Number of countries must be between 3 and 50",
-            ),
-            (
-                "start_year=2000&end_year=2024&limit=51",
-                b"Number of countries must be between 3 and 50",
-            ),
-            (
-                "start_year=2024&end_year=2024&limit=10",
-                b"End year must be later than start year",
-            ),
-            (
-                "start_year=2024&end_year=2000&limit=10",
-                b"End year must be later than start year",
-            ),
-            (
-                "start_year=twenty&end_year=2024&limit=10",
-                b"Start year must be a whole number",
-            ),
-            (
-                "start_year=2000&end_year=twenty&limit=10",
-                b"End year must be a whole number",
-            ),
-            (
-                "start_year=2000&end_year=2024&limit=many",
-                b"Number of countries must be a whole number",
-            ),
-        )
-
-        for query, message in cases:
-            with self.subTest(query=query):
-                response = self.client.get(
-                    f"/vaccination-improvement?antigen=MCV1&{query}"
-                )
-
-                self.assertEqual(response.status_code, 200)
-                self.assertIn(message, response.data)
-                self.assertIn(b'role="alert"', response.data)
-
-    def test_improvement_results_render_complete_ranked_comparison_rows(self) -> None:
-        response = self.client.get(
-            "/vaccination-improvement"
-            "?antigen=MCV1&start_year=2000&end_year=2024&limit=3"
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"3 countries returned", response.data)
-        self.assertEqual(response.data.count(b'class="rank-number"'), 3)
-        self.assertIn(b"<caption>", response.data)
-        self.assertIn(b"Positive vaccination-rate improvements", response.data)
-        for heading in (
-            b"Antigen",
-            b"Start year",
-            b"End year",
-            b"Start rate",
-            b"End rate",
-            b"Improvement",
-        ):
-            with self.subTest(heading=heading):
-                self.assertIn(heading, response.data)
-        self.assertGreaterEqual(response.data.count(b">MCV1<"), 3)
-        self.assertGreaterEqual(response.data.count(b">2000<"), 3)
-        self.assertGreaterEqual(response.data.count(b">2024<"), 3)
-        self.assertIn(b"rate = administered doses / population x 100", response.data)
-        self.assertIn(b"Improvement = end rate - start rate", response.data)
-
-    def test_improvement_page_explains_when_no_positive_rows_exist(self) -> None:
-        with self.app.app_context():
-            database = get_db()
-            database.execute(
-                "DELETE FROM Vaccination WHERE antigen = ? AND year IN (?, ?)",
-                ("MCV1", 2000, 2024),
-            )
-            database.commit()
-
-        response = self.client.get(
-            "/vaccination-improvement"
-            "?antigen=MCV1&start_year=2000&end_year=2024&limit=10"
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b"0 countries returned", response.data)
-        self.assertIn(b"No positive improvement found", response.data)
-        self.assertIn(b"Only countries with data for both years", response.data)
 
     def test_benchmark_page_includes_accessible_global_row_first(self) -> None:
         response = self.client.get("/infection-benchmark?infection=MEA&year=2020")

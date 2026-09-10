@@ -10,23 +10,23 @@ PERSONAS = (
     (
         "Public health student",
         "Learner",
-        "Understand how vaccination coverage and infection rates differ across countries.",
+        "Understand how reported infection rates differ between countries and economic groups.",
         "Clear definitions, comparable units and guided filters.",
-        "Landing snapshot, vaccination explorer and global benchmark.",
+        "Economy comparison and the weighted global infection benchmark.",
     ),
     (
         "Policy researcher",
         "Analyst",
-        "Identify geographic patterns and countries that may warrant closer investigation.",
+        "Identify economic and geographic patterns that may warrant closer investigation.",
         "Traceable calculations, flexible sorting and transparent data-quality handling.",
-        "Economy comparison, improvement ranking and downloadable-looking tables.",
+        "Economy comparison, sortable detail tables and above-benchmark country lists.",
     ),
     (
         "Community educator",
         "Communicator",
         "Find reliable, neutral evidence to support public conversations about immunisation.",
         "Plain language, respectful framing and concise evidence summaries.",
-        "Mission page, four-fact snapshot and labelled rates per 100,000 people.",
+        "Mission page and labelled rates per 100,000 people.",
     ),
 )
 

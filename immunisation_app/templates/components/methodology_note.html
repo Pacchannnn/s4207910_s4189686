@@ -3,5 +3,13 @@
     <p class="eyebrow light">Method</p>
     <h2 id="methodology-title">{{ methodology_title }}</h2>
   </div>
-  <p>{{ methodology_text }}</p>
+  {% if methodology_extra is defined and methodology_extra %}
+  <div>
+    <p>{{ methodology_text }}</p>
+    <details class="methodology-details">
+      <summary>How the economy rate is calculated</summary>
+      <p>{{ methodology_extra }}</p>
+    </details>
+  </div>
+  {% else %}<p>{{ methodology_text }}</p>{% endif %}
 </aside>

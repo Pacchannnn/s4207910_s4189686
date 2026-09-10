@@ -1,42 +1,32 @@
-# Final review: issue resolution
+# Known issues and resolution history
 
-Original review: `c0d9332`. The user subsequently requested fixes. All five recorded items below are now resolved; historical reproduction details are retained for traceability.
+## Status — 10 September 2026
 
-## Confirmed application issue
+| Item | Status | Evidence / remaining scope |
+|---|---|---|
+| Sub-Task A removal | Complete | The landing page, vaccination coverage explorer and vaccination improvement ranking were removed, together with their queries, templates, styles, tests and documentation rows. The Mission page moved to `/` and `/mission` now redirects there. See `REQUIREMENTS_MATRIX.md`. |
+| Benchmark user-selected sorting | Resolved | Sorting uses a whitelist, preserves which countries exceed the benchmark and keeps the global row first. No similarity score or clustering was added. |
+| Numeric filtering on Infections | Resolved | Cases, population and rate filters use validated values and whitelisted comparisons. They narrow the detail table only; economy summaries and denominators do not change. |
+| Missing-data explanations | Resolved | Missing-record, unmatched-economy and represented-population explanations were added to the page methodology notes without changing source data or calculations. |
+| Adapted UI components on Infections | Integrated | Sortable header links preserve filters and expose sort state; country and economy labels are row headers; the optional methodology detail collapses while the warnings stay visible. Four regressions in `tests/test_member_components.py`. See the attribution note in `README.md`. |
 
-### BUG-01 — Improvement sort can misrepresent display positions as improvement ranks (P2)
+Current suite: **47/47 tests pass**. Passing tests are not proof of the absence of all possible defects; see `VERIFICATION.md` for what was and was not checked.
 
-- Location: `immunisation_app/templates/vaccination_improvement.html:6` and `:38`; selected sorting and limiting in `get_vaccination_improvements` in `immunisation_app/queries.py`.
-- Reproduce: open `/vaccination-improvement?antigen=MCV1&start_year=2000&end_year=2024&limit=3&sort=country&direction=asc`.
-- Actual: Afghanistan, Algeria, Angola appear as ranks 1–3 beneath “Largest vaccination-rate improvements”. With improvement/descending, the three countries are Sierra Leone, South Sudan, Libya instead.
-- Impact: readers can mistake alphabetical display positions for the largest improvements.
-- Later fix: make the heading and position label accurately reflect selected sorting, or explicitly choose a contract that selects the largest N improvements before sorting their display.
-- Note: selected sort before LIMIT is explicitly required by Task 7; this finding concerns presentation, not a proven violation of that SQL plan.
-- Status: resolved. The page now says “Positive vaccination-rate improvements”, explains selected sorting before limiting, and labels display order “Position”. All eight sort/direction combinations are covered by a route regression. SQL selection semantics are preserved.
+## Remaining source-data notes
+
+These are handled and explained in the interface rather than silently rewritten:
+
+- Two countries (Ethiopia and Venezuela) have a blank economy mapping. They are excluded from the economy view instead of being reassigned to a group, and the page says so. They still appear in the global benchmark, which does not require an economy match.
+- Rates depend on a matching same-year population row with a positive population. Records without one are excluded from the denominator, so a rate describes represented records, not the whole world.
+- A missing record is not treated as zero cases. "No matching result" does not mean "no cases".
 
 ## Test coverage gaps (not confirmed application bugs)
 
-| ID | Gap | Location / later check |
+| ID | Gap | Later check |
 |---|---|---|
-| TEST-01 | Invalid-input tests do not directly prove query bypass and malformed-input handling across every analytical route. | `tests/test_routes.py`; verify analytical query functions are not called on invalid requests. Current views contain `if not errors` guards. |
-| TEST-02 | Home fact mutation test changes only the first year. | `tests/test_routes.py`, `test_home_fact_cards_follow_snapshot_database_changes`; vary other displayed facts too. Current template reads their database fields. |
-| TEST-03 | Hero-topic test searches the whole response. | `tests/test_routes.py`, `test_home_hero_names_vaccination_coverage_and_preventable_infections`; scope the assertion to the hero. Current hero contains the required topics. |
+| TEST-04 | The responsive assertion in `tests/test_routes.py` checks one phone rule (`.sort-pair`) rather than every collapsing grid. | Extend `test_phone_styles_stack_every_filter_control_in_one_column` to assert each single-column rule in the 640px block. |
+| TEST-05 | Accessibility evidence is structural (labels, captions, header scopes, named regions). No assistive-technology run is automated. | Add a screen-reader or axe-style pass if the toolchain allows it. |
 
-Resolved: TEST-01 now asserts an alert and zero analytical-query calls for invalid numeric and choice fields on all four analytical routes. TEST-02 now mutates both year endpoints and country/antigen/infection counts in temporary SQLite, then checks each fact value. TEST-03 now inspects only the hero section.
+## Removed history
 
-## Robustness concern
-
-ROBUST-01: vaccination fallback divides by `NULLIF(v.target_num, 0)`, so negative targets are not explicitly excluded although documentation describes a positive-target rule (`immunisation_app/queries.py`, `get_vaccination_view`). No negative targets were found in the tracked database during review. Add a negative-target fixture and align calculation/documentation in a later data-quality change. This is not a demonstrated failure on the shipped dataset.
-
-Resolved: fallback now uses `CASE WHEN v.target_num > 0`. Regression cases cover negative, zero, missing and positive targets, including usable-country counts and average coverage. Reported coverage retains priority.
-
-## Completed review and verification
-
-- Task 10 identity review: source bootstrap, tracked SQLite, query tests and Mission output agree on Le Chi Bach / s4207910 and Nguyen Tran Ba Trong / s4189686.
-- Fresh final run: `python -m unittest discover -s tests -q` — 51 tests passed.
-- Read-only SQLite check: `PRAGMA integrity_check` — `ok`; exact two identities verified.
-- Prior Task 1 route-inventory and Task 5 stale-matrix notes are resolved by final smoke evidence/current documentation.
-- Final review used source, documentation, tests and targeted database inspection. It did not repeat Task 9's browser sweep; that evidence remains in `VERIFICATION.md`.
-- Fix verification: 54/54 tests pass; `git diff --check` passes. Both behavior regressions were observed failing before the fixes.
-- Broader Flask test-client sweep: 623 requests across all vaccination antigen/year combinations, all infection/year/economy combinations, all benchmark infection/year combinations, and improvement antigen/end-year combinations from 2000, plus overview/Mission/404. All returned expected status codes.
-- No unresolved confirmed issue remains in this inventory. This is bounded verification, not proof of absence of all possible defects. The fix pass did not repeat the earlier browser viewport sweep; its changes affect wording, fallback calculation and tests.
+Issue records that described only the Sub-Task A pages — the improvement-ranking heading defect, the coverage fallback and endpoint data fixes, and the landing-page fact-card test gaps — were removed together with the pages they described. They are recoverable from the Git history of this repository.
