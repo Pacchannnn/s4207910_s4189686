@@ -1,0 +1,13 @@
+{# Adapted from the member project's _macros.html; uses the main project's keys. #}
+{% macro sortable_header(label, key, current_sort, current_direction, numeric=false) -%}
+  {% set active = current_sort == key %}
+  {% set next_direction = ('asc' if current_direction == 'desc' else 'desc') if active else ('asc' if key == 'country' else 'desc') %}
+  {% set args = request.args.copy() %}
+  {% set _ = args.setlist('sort', [key]) %}
+  {% set _ = args.setlist('direction', [next_direction]) %}
+  <th scope="col"{% if numeric %} class="numeric"{% endif %}{% if active %} aria-sort="{{ 'descending' if current_direction == 'desc' else 'ascending' }}"{% endif %}>
+    <a class="table-sort-link{{ ' is-active' if active else '' }}" data-sort-key="{{ key }}"
+       href="{{ url_for(request.endpoint) }}?{{ args.items(multi=true)|list|urlencode }}"
+       aria-label="Sort {{ label }} {{ 'ascending' if next_direction == 'asc' else 'descending' }}">{{ label }} <span aria-hidden="true">{{ ('↓' if current_direction == 'desc' else '↑') if active else '↕' }}</span></a>
+  </th>
+{%- endmacro %}

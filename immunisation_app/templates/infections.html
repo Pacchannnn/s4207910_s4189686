@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% from "components/sortable_header.html" import sortable_header %}
+{% block title %}Infections by Economy | Immunisation Lens{% endblock %}
+{% block content %}
+<section class="page-intro">
+  <div class="content-shell intro-grid">
+    <div><p class="eyebrow">Infection explorer</p><h1>Reported infections by economic status</h1></div>
+    <p class="lead">Compare reported cases and population-adjusted rates for one economic group, infection type, and year.</p>
+  </div>
+</section>
+
+<section class="filter-band" aria-label="Infection filters">
+  <div class="content-shell">
+    <form class="filter-form five-columns" method="get">
+      <label><span>Economic status</span><select name="economy" required>
+        {% for item in reference.economies %}<option value="{{ item.id }}" {{ 'selected' if item.id == filters.economy else '' }}>{{ item.name }}</option>{% endfor %}
+      </select></label>
+      <label><span>Infection type</span><select name="infection" required>
+        {% for item in reference.infections %}<option value="{{ item.id }}" {{ 'selected' if item.id == filters.infection else '' }}>{{ item.name }}</option>{% endfor %}
+      </select></label>
+      <label><span>Year</span><select name="year" required>
+        {% for item in reference.years %}<option value="{{ item.value }}" {{ 'selected' if item.value == filters.year else '' }}>{{ item.value }}</option>{% endfor %}
+      </select></label>
+      <label><span>Country contains</span><input type="search" name="search" value="{{ filters.search }}" maxlength="80" placeholder="Optional"></label>
+      <label><span>Numeric filter (detail only)</span><select name="numeric_column">
+        <option value="">No numeric filter</option>
+        {% for key, label in [('cases', 'Cases'), ('population', 'Population'), ('rate', 'Cases per 100,000')] %}<option value="{{ key }}" {{ 'selected' if filters.numeric_column == key else '' }}>{{ label }}</option>{% endfor %}
+      </select></label>
+      <label><span>Comparison</span><select name="numeric_operator">
+        {% for key, label in [('gt', 'Greater than'), ('gte', 'Greater than or equal'), ('lt', 'Less than'), ('lte', 'Less than or equal'), ('eq', 'Equal')] %}<option value="{{ key }}" {{ 'selected' if filters.numeric_operator == key else '' }}>{{ label }}</option>{% endfor %}
+      </select></label>
+      <label><span>Numeric value</span><input type="number" name="numeric_value" value="{{ filters.numeric_value }}" min="0" step="any" placeholder="Optional"></label>
+      <div class="sort-pair">
+        <label><span>Sort by</span><select name="sort">
+          <option value="rate" {{ 'selected' if filters.sort == 'rate' else '' }}>Rate per 100k</option><option value="cases" {{ 'selected' if filters.sort == 'cases' else '' }}>Cases</option><option value="population" {{ 'selected' if filters.sort == 'population' else '' }}>Population</option><option value="country" {{ 'selected' if filters.sort == 'country' else '' }}>Country</option>
+        </select></label>
+        <label><span>Direction</span><select name="direction"><option value="desc" {{ 'selected' if filters.direction == 'desc' else '' }}>Descending</option><option value="asc" {{ 'selected' if filters.direction == 'asc' else '' }}>Ascending</option></select></label>
+      </div>
+      <button class="button primary submit-filter" type="submit">Update results</button>
+    </form>
+  </div>
+</section>
+
+<div class="content-shell">
+  {% set error_title = "Check the filters" %}
+  {% include "components/validation_notice.html" %}
+</div>
+
+{% if selected_summary %}
+<section class="section compact-section" aria-labelledby="selected-economy-title">
+  <div class="content-shell">
+    <div class="section-heading results-heading">
+      <p class="eyebrow">Selected economy</p>
+      <h2 id="selected-economy-title">Selected economy metrics: {{ selected_summary.economy }} - {{ infection_name }} in {{ filters.year }}</h2>
+    </div>
+    <div class="metric-strip">
+      <article><span>Total reported cases</span><strong>{{ selected_summary.total_cases|number }}</strong></article>
+      <article><span>Represented population</span><strong>{{ selected_summary.represented_population|number }}</strong></article>
+      <article><span>Weighted rate</span><strong>{{ selected_summary.cases_per_100k|number(2) }}</strong><small>per 100,000 people</small></article>
+      <article><span>Countries represented</span><strong>{{ selected_summary.country_count }}</strong></article>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section class="section compact-section" aria-labelledby="economy-summary-title">
+  <div class="content-shell">
+    <div class="section-heading split-heading results-heading"><div><p class="eyebrow">Combined-table summary</p><h2 id="economy-summary-title">All-economy infection summary</h2></div><p>{{ infection_name }} in {{ filters.year }} across every economic status with represented population data.</p></div>
+    {% if summary %}<div class="table-shell" role="region" aria-label="Scrollable all-economy infection summary table" tabindex="0"><table>
+      <caption>{{ infection_name }} infection summary across economic statuses in {{ filters.year }}</caption>
+      <thead><tr><th scope="col">Economic status</th><th scope="col" class="numeric">Countries</th><th scope="col" class="numeric">Cases</th><th scope="col" class="numeric">Population</th><th scope="col" class="numeric">Cases per 100,000</th></tr></thead>
+      <tbody>{% for row in summary %}<tr class="{{ 'selected-row' if row.economy_id == filters.economy else '' }}"><th scope="row" class="infection-row-header"><strong>{{ row.economy }}</strong></th><td class="numeric">{{ row.country_count }}</td><td class="numeric">{{ row.total_cases|number }}</td><td class="numeric">{{ row.represented_population|number }}</td><td class="numeric">{{ row.cases_per_100k|number(2) }}</td></tr>{% endfor %}</tbody>
+    </table></div>{% elif not errors %}<div class="empty-state"><h3>No economy summary available</h3><p>Try another infection type or year.</p></div>{% endif %}
+  </div>
+</section>
+
+<section class="section section-rule compact-section" aria-labelledby="infection-results-title">
+  <div class="content-shell">
+    <div class="section-heading split-heading results-heading"><div><p class="eyebrow">Country detail</p><h2 id="infection-results-title">Country infection detail</h2></div><p>{{ rows|length }} {{ 'matching country' if rows|length == 1 else 'matching countries' }} in the selected economic status.</p></div>
+    {% if rows %}<div class="table-shell" role="region" aria-label="Scrollable country infection results table" tabindex="0"><table>
+      <caption>{{ infection_name }} country results for {{ filters.year }} in the selected economic status</caption>
+      <thead><tr><th scope="col">Infection</th>{{ sortable_header('Country', 'country', filters.sort, filters.direction) }}<th scope="col">Economic status</th><th scope="col">Year</th>{{ sortable_header('Cases', 'cases', filters.sort, filters.direction, true) }}{{ sortable_header('Population', 'population', filters.sort, filters.direction, true) }}{{ sortable_header('Cases per 100,000', 'rate', filters.sort, filters.direction, true) }}</tr></thead>
+      <tbody>{% for row in rows %}<tr><td><strong>{{ row.infection }}</strong></td><th scope="row" class="infection-row-header">{{ row.country }}</th><td>{{ row.economy }}</td><td>{{ row.year }}</td><td class="numeric">{{ row.cases|number }}</td><td class="numeric">{{ row.population|number }}</td><td class="numeric"><strong>{{ row.cases_per_100k|number(2) }}</strong></td></tr>{% endfor %}</tbody>
+    </table></div>{% elif not errors %}<div class="empty-state"><h3>No matching countries</h3><p>Clear the country search or choose another year and economic status.</p></div>{% endif %}
+  </div>
+</section>
+
+<section class="section compact-section" aria-labelledby="methodology-title">
+  <div class="content-shell">
+    {% set methodology_title = "How to read this view" %}
+    {% set methodology_text = "Country rates are reported cases divided by that country's represented population, multiplied by 100,000. Records without a positive population are excluded. Records must match a country, an economic group and a population for the selected year. Blank or unmatched economic groups are excluded, not reassigned. The denominator covers represented records, not every country in the world. Country search and the numeric filter narrow the detail table only, not the economy summaries. Numeric comparisons use unrounded values; displayed rates are rounded. No matching result does not mean zero cases." %}
+    {% set methodology_extra = "Economy rates use total cases divided by total represented population, so they are weighted rather than an average of country rates." %}
+    {% include "components/methodology_note.html" %}
+  </div>
+</section>
+{% endblock %}
