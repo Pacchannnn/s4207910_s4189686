@@ -2,7 +2,7 @@
 
 A Python/Flask application for exploring reported preventable infections using
 SQLite. This is the **Sub-Task B** submission: three pages provide the mission,
-personas and team (`/`), infection data by economic status (`/infections`), and
+personas and team , infection data by economic status (`/infections`), and
 the countries reporting above the weighted global infection rate
 (`/infection-benchmark`).
 
@@ -71,7 +71,6 @@ docs/                  Requirements, verification and known issues
 
 The Sub-Task A pages (landing page, vaccination coverage explorer and
 vaccination improvement ranking) were removed from this submission, along with
-their queries, templates, styles and tests. The Mission page is now served at
-`/`, and the previous `/mission` address redirects there. The supplied database
+their queries, templates, styles and tests. The supplied database
 is unchanged apart from the project persona rows, which describe the pages that
 remain. `docs/REQUIREMENTS_MATRIX.md` records the removal in full.
