@@ -7,7 +7,7 @@
       <p class="eyebrow">Mission and audience</p>
       <h1>Evidence that informs without overstating.</h1>
     </div>
-    <p class="lead">Our purpose is to help people investigate global immunisation efforts and reported preventable infections through transparent, comparable and respectfully presented data.</p>
+    <p class="lead">Explore respectfully presented data on vaccination and reported infections. Use filters and comparisons to understand the results and their limits.</p>
   </div>
 </section>
 
@@ -16,14 +16,14 @@
     <div class="section-heading split-heading light-heading">
       <div>
         <p class="eyebrow light">How to use the site</p>
-        <h2 id="how-title">Three layers of understanding</h2>
+        <h2 id="how-title">Explore, filter, compare</h2>
       </div>
       <p>The site supports quick orientation and deeper investigation without presenting association as causation.</p>
     </div>
     <ol class="use-steps">
-      <li><span>1</span><div><h3>Orient</h3><p>Start with the <a href="{{ url_for('pages.home') }}">database overview</a> and this mission page.</p></div></li>
-      <li><span>2</span><div><h3>Focus</h3><p>Use the <a href="{{ url_for('pages.vaccinations') }}">vaccination</a> and <a href="{{ url_for('pages.infections') }}">infection</a> explorers to filter by place, topic and year.</p></div></li>
-      <li><span>3</span><div><h3>Deepen</h3><p>Compare <a href="{{ url_for('pages.vaccination_improvement') }}">vaccination change between two years</a> or place countries against a <a href="{{ url_for('pages.infection_benchmark') }}">weighted global infection rate</a>.</p></div></li>
+      <li><span aria-hidden="true">◎</span><div><h3>Explore the dataset</h3><p>Start with the <a href="{{ url_for('pages.home') }}">database overview</a> and this mission page.</p></div></li>
+      <li><span aria-hidden="true">≡</span><div><h3>Filter results</h3><p>Use the <a href="{{ url_for('pages.vaccinations') }}">vaccination</a> and <a href="{{ url_for('pages.infections') }}">infection</a> explorers to filter by place, topic and year.</p></div></li>
+      <li><span aria-hidden="true">↔</span><div><h3>Compare</h3><p>Compare <a href="{{ url_for('pages.vaccination_improvement') }}">vaccination change between two years</a> or place countries against a <a href="{{ url_for('pages.infection_benchmark') }}">weighted global infection rate</a>.</p></div></li>
     </ol>
   </div>
 </section>
@@ -66,6 +66,22 @@
       </article>
       {% endfor %}
     </div>
+  </div>
+</section>
+<section id="data-notes" class="section section-rule" aria-labelledby="data-notes-title">
+  <div class="content-shell">
+    <div class="section-heading compact-heading">
+      <h2 id="data-notes-title">Data notes: what the terms mean</h2>
+      <p>Missing data is not zero. Each analysis page explains which records its results represent.</p>
+    </div>
+    <dl class="data-glossary">
+      <div><dt>Antigen</dt><dd>The vaccine or dose category selected for the vaccination analysis.</dd></div>
+      <div><dt>Vaccination coverage</dt><dd>The reported coverage percentage, with a fallback of valid doses divided by a positive target count, multiplied by 100. Missing doses do not provide a fallback.</dd></div>
+      <div><dt>Recorded doses and population-based rate</dt><dd>Doses are the recorded administered doses. Improvement compares doses divided by the population in the same year, multiplied by 100. This uses population, not the coverage target. Both years require valid data.</dd></div>
+      <div><dt>Percentage points (pp)</dt><dd>The end-year rate minus the start-year rate. This is how vaccination improvement is expressed.</dd></div>
+      <div><dt>Infection rate</dt><dd>Reported cases divided by the matching same-year population, multiplied by 100,000: cases per 100,000 people.</dd></div>
+      <div><dt>Global benchmark</dt><dd>Total reported cases divided by total represented population, multiplied by 100,000. It is weighted, not a simple average of country rates, and represents valid matching records rather than the entire world population.</dd></div>
+    </dl>
   </div>
 </section>
 {% endblock %}

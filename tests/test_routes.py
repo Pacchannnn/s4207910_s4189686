@@ -70,7 +70,7 @@ class SemanticDocumentParser(HTMLParser):
             self.labels.append(label)
             self._open_labels.append(label)
 
-        if tag in {"input", "select", "textarea"}:
+        if tag in {"input", "select", "textarea"} and attributes.get("type") != "hidden":
             control: dict[str, object] = {
                 "attributes": attributes,
                 "wrapping_label": self._open_labels[-1]
@@ -210,6 +210,15 @@ class RouteTests(unittest.TestCase):
         )
         self.client = self.app.test_client()
 
+    def get_submitted(self, path, **kwargs):
+        """Existing result regressions exercise an explicitly submitted analysis."""
+        if path.split("?")[0] in {"/vaccinations", "/infections", "/vaccination-improvement", "/infection-benchmark"}:
+            if "query_string" in kwargs:
+                kwargs["query_string"] = {**kwargs["query_string"], "run": "1"}
+            else:
+                path += ("&" if "?" in path else "?") + "run=1"
+        return self.client.get(path, **kwargs)
+
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
 
@@ -225,7 +234,7 @@ class RouteTests(unittest.TestCase):
 
         for path in paths:
             with self.subTest(path=path):
-                response = self.client.get(path)
+                response = self.get_submitted(path)
                 self.assertEqual(response.status_code, 200)
                 self.assertIn(b"Immunisation Lens", response.data)
 
@@ -242,7 +251,7 @@ class RouteTests(unittest.TestCase):
 
         for path in paths:
             with self.subTest(path=path):
-                response = self.client.get(path)
+                response = self.get_submitted(path)
                 document = SemanticDocumentParser()
                 document.feed(response.get_data(as_text=True))
 
@@ -266,12 +275,12 @@ class RouteTests(unittest.TestCase):
         cases = (
             (
                 "/vaccinations?antigen=MCV2&year=2010",
-                ("antigen", "year", "country", "region", "sort", "direction"),
+                ("antigen", "year", "country", "region", "sort", "direction", "direction"),
                 2,
             ),
             (
                 "/infections?economy=3&infection=MEA&year=2022",
-                ("economy", "infection", "year", "search", "sort", "direction"),
+                ("economy", "infection", "year", "search", "numeric_column", "numeric_operator", "numeric_value", "sort", "direction", "direction"),
                 2,
             ),
             (
@@ -284,19 +293,20 @@ class RouteTests(unittest.TestCase):
                     "limit",
                     "sort",
                     "direction",
+                    "direction",
                 ),
                 1,
             ),
             (
                 "/infection-benchmark?infection=MEA&year=2020",
-                ("infection", "year"),
+                ("infection", "year", "sort", "direction", "direction"),
                 1,
             ),
         )
 
         for path, expected_controls, expected_table_count in cases:
             with self.subTest(path=path):
-                response = self.client.get(path)
+                response = self.get_submitted(path)
                 document = SemanticDocumentParser()
                 document.feed(response.get_data(as_text=True))
 
@@ -347,7 +357,7 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(document.unlabelled_controls(), [document.controls[0]])
 
     def test_phone_styles_stack_every_filter_control_in_one_column(self) -> None:
-        response = self.client.get("/static/css/styles.css")
+        response = self.get_submitted("/static/css/styles.css")
         stylesheet = response.get_data(as_text=True)
         status_code = response.status_code
         response.close()
@@ -375,7 +385,7 @@ class RouteTests(unittest.TestCase):
 
         for path, expected_headings in cases:
             with self.subTest(path=path):
-                response = self.client.get(path)
+                response = self.get_submitted(path)
                 document = SemanticDocumentParser()
                 document.feed(response.get_data(as_text=True))
 
@@ -408,7 +418,7 @@ class RouteTests(unittest.TestCase):
             ),
         ):
             with self.subTest(path=path):
-                response = self.client.get(path)
+                response = self.get_submitted(path)
                 document = SemanticDocumentParser()
                 document.feed(response.get_data(as_text=True))
 
@@ -416,7 +426,7 @@ class RouteTests(unittest.TestCase):
                 self.assertIn(expected_heading, document.empty_state_headings)
 
     def test_shared_shell_has_accessible_navigation_and_no_js_dependency(self) -> None:
-        response = self.client.get("/")
+        response = self.get_submitted("/")
 
         self.assertIn(b'href="#main-content"', response.data)
         self.assertIn(b'aria-label="Primary navigation"', response.data)
@@ -424,7 +434,7 @@ class RouteTests(unittest.TestCase):
         self.assertNotIn(b"js/app.js", response.data)
 
     def test_home_renders_exactly_four_database_fact_cards(self) -> None:
-        response = self.client.get("/")
+        response = self.get_submitted("/")
 
         self.assertEqual(response.data.count(b'class="fact-card '), 4)
         for value in (b"2000", b"2024", b"217", b"5", b"3"):
@@ -433,7 +443,7 @@ class RouteTests(unittest.TestCase):
     def test_home_hero_names_vaccination_coverage_and_preventable_infections(
         self,
     ) -> None:
-        response = self.client.get("/")
+        response = self.get_submitted("/")
 
         hero = re.search(rb'<section class="hero">(.*?)</section>', response.data, re.DOTALL)
         self.assertIsNotNone(hero)
@@ -446,7 +456,7 @@ class RouteTests(unittest.TestCase):
             database.execute("INSERT INTO YearDate (YearID) VALUES (?)", (1999,))
             database.commit()
 
-        response = self.client.get("/")
+        response = self.get_submitted("/")
         fact_cards = re.findall(
             rb'<article class="fact-card [^"]+">(.*?)</article>',
             response.data,
@@ -463,7 +473,7 @@ class RouteTests(unittest.TestCase):
             database.execute("INSERT INTO Antigen (AntigenID, name) VALUES ('TEST', 'Fixture antigen')")
             database.execute("INSERT INTO Infection_Type (id, description) VALUES ('TST', 'Fixture')")
             database.commit()
-        changed = self.client.get("/").data
+        changed = self.get_submitted("/").data
         values = re.findall(rb'<span class="fact-value">(.*?)</span>', changed)
         self.assertEqual(values, [b"1999-2031", b"218", b"6", b"4"])
 
@@ -476,7 +486,7 @@ class RouteTests(unittest.TestCase):
         ):
             for field in fields:
                 with self.subTest(route=route, field=field), patch("immunisation_app.views." + query) as analytical_query:
-                    response = self.client.get(route, query_string={field: "invalid-value"})
+                    response = self.get_submitted(route, query_string={field: "invalid-value"})
                     self.assertEqual(response.status_code, 200)
                     self.assertIn(b'role="alert"', response.data)
                     analytical_query.assert_not_called()
@@ -485,7 +495,7 @@ class RouteTests(unittest.TestCase):
         for sort in ("country", "start_rate", "end_rate", "improvement"):
             for direction in ("asc", "desc"):
                 with self.subTest(sort=sort, direction=direction):
-                    response = self.client.get("/vaccination-improvement", query_string={
+                    response = self.get_submitted("/vaccination-improvement", query_string={
                         "antigen": "MCV1", "start_year": 2000, "end_year": 2024,
                         "limit": 3, "sort": sort, "direction": direction,
                     })
@@ -495,7 +505,7 @@ class RouteTests(unittest.TestCase):
                     self.assertNotIn(b"Largest vaccination-rate improvements", response.data)
 
     def test_home_links_to_both_explorers_and_both_analyses(self) -> None:
-        response = self.client.get("/")
+        response = self.get_submitted("/")
 
         for path in (
             b"/vaccinations",
@@ -551,12 +561,12 @@ class RouteTests(unittest.TestCase):
             personas = get_personas(database)
             members = get_team_members(database)
 
-        response = self.client.get("/mission")
+        response = self.get_submitted("/mission")
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"respectfully presented data", response.data)
         self.assertIn(b"without presenting association as causation", response.data)
-        for layer in (b"Orient", b"Focus", b"Deepen"):
+        for layer in (b"Explore the dataset", b"Filter results", b"Compare"):
             self.assertIn(layer, response.data)
         for persona in personas:
             for value in persona.values():
@@ -573,7 +583,7 @@ class RouteTests(unittest.TestCase):
                 self.assertIn(escape(str(value)).encode(), response.data)
 
     def test_mission_renders_exact_database_backed_submission_identities(self) -> None:
-        response = self.client.get("/mission")
+        response = self.get_submitted("/mission")
 
         self.assertEqual(response.status_code, 200)
         for name, student_number in (
@@ -586,7 +596,7 @@ class RouteTests(unittest.TestCase):
             self.assertNotIn(placeholder, response.data)
 
     def test_invalid_filters_render_a_labelled_alert(self) -> None:
-        response = self.client.get(
+        response = self.get_submitted(
             "/infections?economy=3&infection=MEA&year=twenty"
         )
 
@@ -599,7 +609,7 @@ class RouteTests(unittest.TestCase):
         )
 
     def test_analytical_page_renders_a_labelled_methodology_note(self) -> None:
-        response = self.client.get("/vaccination-improvement")
+        response = self.get_submitted("/vaccination-improvement")
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(
@@ -612,7 +622,7 @@ class RouteTests(unittest.TestCase):
         )
 
     def test_vaccination_page_accepts_filters(self) -> None:
-        response = self.client.get(
+        response = self.get_submitted(
             "/vaccinations?antigen=MCV2&year=2010&sort=coverage&direction=desc"
         )
 
@@ -621,7 +631,7 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"Regional target summary", response.data)
 
     def test_vaccination_country_filter_shows_target_metrics_and_anomaly(self) -> None:
-        response = self.client.get(
+        response = self.get_submitted(
             "/vaccinations?antigen=MCV2&year=2010&country=KNA"
         )
 
@@ -631,7 +641,7 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"Reported above 100%", response.data)
 
     def test_vaccination_region_filter_limits_country_results(self) -> None:
-        response = self.client.get(
+        response = self.get_submitted(
             "/vaccinations?antigen=MCV2&year=2010&region=TLA"
         )
 
@@ -641,10 +651,10 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"Reported above 100%", response.data)
 
     def test_vaccination_country_and_region_filters_work_together(self) -> None:
-        response = self.client.get(
+        response = self.get_submitted(
             "/vaccinations?antigen=MCV2&year=2010&country=KNA&region=TLA"
         )
-        incompatible_response = self.client.get(
+        incompatible_response = self.get_submitted(
             "/vaccinations?antigen=MCV2&year=2010&country=KNA&region=TEA"
         )
 
@@ -660,7 +670,7 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"No regional data", incompatible_response.data)
 
     def test_infection_page_accepts_filters(self) -> None:
-        response = self.client.get(
+        response = self.get_submitted(
             "/infections?economy=3&infection=MEA&year=2022&search=Zimbabwe&sort=cases&direction=asc"
         )
 
@@ -672,7 +682,7 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b'value="2022" selected', response.data)
         self.assertIn(b'value="Zimbabwe"', response.data)
         self.assertIn(b'value="cases" selected', response.data)
-        self.assertIn(b'value="asc" selected', response.data)
+        self.assertIn(b'value="asc" checked', response.data)
         self.assertIn(b"Selected economy metrics", response.data)
         self.assertIn(
             b"Selected economy metrics: Lower Middle Income - Measles in 2022",
@@ -685,7 +695,7 @@ class RouteTests(unittest.TestCase):
         self.assertGreaterEqual(response.data.count(b'scope="col"'), 12)
 
     def test_infection_page_shows_an_empty_state_for_a_nonmatching_search(self) -> None:
-        response = self.client.get(
+        response = self.get_submitted(
             "/infections?economy=3&infection=MEA&year=2022&search=no-such-country"
         )
 
@@ -693,7 +703,7 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"No matching countries", response.data)
 
     def test_malformed_year_and_sort_show_validation_messages(self) -> None:
-        response = self.client.get(
+        response = self.get_submitted(
             "/infections?economy=3&infection=MEA&year=twenty&sort=unknown&direction=sideways"
         )
 
@@ -703,7 +713,7 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"Choose a valid sort direction", response.data)
 
     def test_invalid_improvement_years_show_validation_message(self) -> None:
-        response = self.client.get(
+        response = self.get_submitted(
             "/vaccination-improvement?antigen=MCV1&start_year=2024&end_year=2000&limit=10"
         )
 
@@ -713,7 +723,7 @@ class RouteTests(unittest.TestCase):
     def test_improvement_limit_boundaries_are_accepted_and_retained(self) -> None:
         for limit in (3, 50):
             with self.subTest(limit=limit):
-                response = self.client.get(
+                response = self.get_submitted(
                     "/vaccination-improvement"
                     f"?antigen=MCV1&start_year=2000&end_year=2024&limit={limit}"
                 )
@@ -759,7 +769,7 @@ class RouteTests(unittest.TestCase):
 
         for query, message in cases:
             with self.subTest(query=query):
-                response = self.client.get(
+                response = self.get_submitted(
                     f"/vaccination-improvement?antigen=MCV1&{query}"
                 )
 
@@ -768,7 +778,7 @@ class RouteTests(unittest.TestCase):
                 self.assertIn(b'role="alert"', response.data)
 
     def test_improvement_results_render_complete_ranked_comparison_rows(self) -> None:
-        response = self.client.get(
+        response = self.get_submitted(
             "/vaccination-improvement"
             "?antigen=MCV1&start_year=2000&end_year=2024&limit=3"
         )
@@ -803,7 +813,7 @@ class RouteTests(unittest.TestCase):
             )
             database.commit()
 
-        response = self.client.get(
+        response = self.get_submitted(
             "/vaccination-improvement"
             "?antigen=MCV1&start_year=2000&end_year=2024&limit=10"
         )
@@ -814,7 +824,7 @@ class RouteTests(unittest.TestCase):
         self.assertIn(b"Only countries with data for both years", response.data)
 
     def test_benchmark_page_includes_accessible_global_row_first(self) -> None:
-        response = self.client.get("/infection-benchmark?infection=MEA&year=2020")
+        response = self.get_submitted("/infection-benchmark?infection=MEA&year=2020")
 
         self.assertEqual(response.status_code, 200)
         table_start = response.data.index(b"<tbody>")
@@ -846,7 +856,7 @@ class RouteTests(unittest.TestCase):
             )
             database.commit()
 
-        response = self.client.get(
+        response = self.get_submitted(
             "/infection-benchmark?infection=MEA&year=2020"
         )
 
@@ -857,7 +867,7 @@ class RouteTests(unittest.TestCase):
         self.assertNotIn(b'class="global-benchmark"', response.data)
 
     def test_unknown_route_returns_branded_404(self) -> None:
-        response = self.client.get("/not-a-real-page")
+        response = self.get_submitted("/not-a-real-page")
 
         self.assertEqual(response.status_code, 404)
         self.assertIn(b"Page not found", response.data)

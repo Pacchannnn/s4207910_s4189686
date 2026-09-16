@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+import math
 from typing import Any
 
 
@@ -143,7 +144,9 @@ def get_vaccination_view(
     coverage_expression = """
         COALESCE(
             CAST(NULLIF(TRIM(CAST(v.coverage AS TEXT)), '') AS REAL),
-            CASE WHEN v.target_num > 0
+            CASE WHEN typeof(v.doses) IN ('integer', 'real')
+                      AND typeof(v.target_num) IN ('integer', 'real')
+                      AND v.target_num > 0
                 THEN v.doses * 100.0 / v.target_num END
         )
     """
@@ -232,6 +235,9 @@ def get_infection_by_economy(
     search: str,
     sort_by: str,
     direction: str,
+    numeric_column: str = "",
+    numeric_operator: str = "gte",
+    numeric_value: float | None = None,
 ) -> dict[str, Any]:
     order_column, order_direction = _safe_order(
         sort_by,
@@ -249,6 +255,17 @@ def get_infection_by_economy(
     if search:
         search_filter = "AND c.name LIKE ?"
         parameters.append(f"%{search}%")
+
+    numeric_filter = ""
+    if numeric_column or numeric_value is not None:
+        columns = {"cases": "cases", "population": "population", "rate": "cases_per_100k"}
+        operators = {"gt": ">", "gte": ">=", "lt": "<", "lte": "<=", "eq": "="}
+        if (numeric_column not in columns or numeric_operator not in operators
+                or not isinstance(numeric_value, (int, float))
+                or not math.isfinite(numeric_value) or numeric_value < 0):
+            raise ValueError("Invalid numeric filter.")
+        numeric_filter = f"WHERE {columns[numeric_column]} {operators[numeric_operator]} ?"
+        parameters.append(numeric_value)
 
     detail_sql = f"""
         WITH rates AS (
@@ -283,6 +300,7 @@ def get_infection_by_economy(
             population,
             cases_per_100k
         FROM rates
+        {numeric_filter}
         ORDER BY {order_column} {order_direction}, country ASC
         LIMIT 500
     """
@@ -346,7 +364,7 @@ def get_vaccination_improvements(
                 ON cp.country = v.country AND cp.year = v.year
             WHERE v.antigen = ?
               AND v.year = ?
-              AND v.doses IS NOT NULL
+              AND typeof(v.doses) IN ('integer', 'real')
               AND cp.population > 0
             GROUP BY c.CountryID, c.name
         ),
@@ -360,7 +378,7 @@ def get_vaccination_improvements(
                 ON cp.country = v.country AND cp.year = v.year
             WHERE v.antigen = ?
               AND v.year = ?
-              AND v.doses IS NOT NULL
+              AND typeof(v.doses) IN ('integer', 'real')
               AND cp.population > 0
             GROUP BY c.CountryID
         ),
@@ -374,6 +392,11 @@ def get_vaccination_improvements(
             FROM start_rates AS s
             JOIN end_rates AS e ON e.country_id = s.country_id
             WHERE e.end_rate - s.start_rate > 0
+        ),
+        top_improvements AS (
+            SELECT * FROM improvements
+            ORDER BY improvement DESC, country ASC
+            LIMIT ?
         )
         SELECT
             country_id,
@@ -384,9 +407,8 @@ def get_vaccination_improvements(
             start_rate,
             end_rate,
             improvement
-        FROM improvements
+        FROM top_improvements
         ORDER BY {order_column} {order_direction}, country ASC
-        LIMIT ?
     """
     return _rows(
         db.execute(
@@ -396,19 +418,25 @@ def get_vaccination_improvements(
                 start_year,
                 antigen,
                 end_year,
+                limit,
                 antigen,
                 start_year,
                 end_year,
-                limit,
             ),
         )
     )
 
 
 def get_above_global_infections(
-    db: sqlite3.Connection, *, infection_id: str, year: int
+    db: sqlite3.Connection, *, infection_id: str, year: int,
+    sort_by: str = "rate", direction: str = "desc",
 ) -> list[dict[str, Any]]:
-    sql = """
+    order_column, order_direction = _safe_order(
+        sort_by, direction,
+        {"country": "country", "cases": "cases", "population": "population",
+         "rate": "cases_per_100k"}, "rate",
+    )
+    sql = f"""
         WITH country_rates AS (
             SELECT
                 c.CountryID AS country_id,
@@ -475,6 +503,6 @@ def get_above_global_infections(
             population,
             cases_per_100k
         FROM combined
-        ORDER BY row_order ASC, cases_per_100k DESC, country ASC
+        ORDER BY row_order ASC, {order_column} {order_direction}, country ASC
     """
     return _rows(db.execute(sql, (infection_id, year, year)))

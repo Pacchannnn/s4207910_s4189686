@@ -302,6 +302,87 @@ class QueryTests(unittest.TestCase):
                 row["improvement"], row["end_rate"] - row["start_rate"], places=6
             )
 
+    def test_vaccination_fallback_requires_numeric_doses_and_target(self) -> None:
+        cases = (
+            ("", 100, None),
+            ("   ", 100, None),
+            (None, 100, None),
+            ("95invalid", 100, None),
+            (95, "100invalid", None),
+            (95, "", None),
+            (95, None, None),
+            (95, 0, None),
+            (95, -100, None),
+            (0, 100, 0.0),
+            (95, 100, 95.0),
+            ("95", "100", 95.0),
+        )
+        for doses, target, expected in cases:
+            with self.subTest(doses=doses, target=target):
+                self.db.execute(
+                    "UPDATE Vaccination SET coverage = '', doses = ?, target_num = ? "
+                    "WHERE antigen = 'MCV1' AND year = 2024 AND country = 'AFG'",
+                    (doses, target),
+                )
+                result = get_vaccination_view(
+                    self.db, antigen="MCV1", year=2024, country="AFG",
+                    region="", sort_by="country", direction="asc",
+                )
+                self.assertEqual(result["metrics"]["average_coverage"], expected)
+                self.assertEqual(
+                    result["metrics"]["countries_with_data"], int(expected is not None)
+                )
+                self.assertEqual(result["summary"][0]["average_coverage"], expected)
+                self.assertEqual(len(result["rows"]), int(expected == 95.0))
+
+    def test_reported_coverage_remains_usable_without_doses(self) -> None:
+        self.db.execute(
+            "UPDATE Vaccination SET coverage = 103, doses = '', target_num = '' "
+            "WHERE antigen = 'MCV1' AND year = 2024 AND country = 'AFG'"
+        )
+        result = get_vaccination_view(
+            self.db, antigen="MCV1", year=2024, country="AFG",
+            region="", sort_by="country", direction="asc",
+        )
+        self.assertEqual(result["metrics"]["average_coverage"], 103.0)
+        self.assertEqual(result["rows"][0]["target_status"], "Reported above 100%")
+
+    def test_improvement_requires_numeric_doses_at_both_endpoints(self) -> None:
+        self.db.execute(
+            "UPDATE CountryPopulation SET population = 100 "
+            "WHERE country = 'AFG' AND year IN (2000, 2024)"
+        )
+        cases = (
+            ("", 100, None),
+            ("   ", 100, None),
+            (None, 100, None),
+            ("invalid", 100, None),
+            ("50invalid", 100, None),
+            (0, "", None),
+            (0, None, None),
+            (0, "100invalid", None),
+            (0, 100, 100.0),
+            (50, 100, 50.0),
+            ("50", "100", 50.0),
+        )
+        for start_doses, end_doses, expected in cases:
+            with self.subTest(start=start_doses, end=end_doses):
+                self.db.executemany(
+                    "UPDATE Vaccination SET doses = ? "
+                    "WHERE antigen = 'MCV1' AND country = 'AFG' AND year = ?",
+                    ((start_doses, 2000), (end_doses, 2024)),
+                )
+                rows = get_vaccination_improvements(
+                    self.db, antigen="MCV1", start_year=2000, end_year=2024,
+                    limit=500, sort_by="improvement", direction="desc",
+                )
+                actual = next((r for r in rows if r["country_id"] == "AFG"), None)
+                if expected is None:
+                    self.assertIsNone(actual)
+                else:
+                    self.assertIsNotNone(actual)
+                    self.assertAlmostEqual(actual["improvement"], expected)
+
     def test_vaccination_improvement_uses_matching_endpoint_populations_and_exclusions(
         self,
     ) -> None:

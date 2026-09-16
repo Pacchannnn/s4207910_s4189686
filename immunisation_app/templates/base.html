@@ -19,12 +19,12 @@
         <span>Immunisation Lens</span>
       </a>
       <nav class="site-nav" id="site-navigation" aria-label="Primary navigation">
-        <a href="{{ url_for('pages.home') }}" class="{{ 'active' if active_page == 'home' else '' }}">Overview</a>
-        <a href="{{ url_for('pages.mission') }}" class="{{ 'active' if active_page == 'mission' else '' }}">Mission</a>
-        <a href="{{ url_for('pages.vaccinations') }}" class="{{ 'active' if active_page == 'vaccinations' else '' }}">Vaccinations</a>
-        <a href="{{ url_for('pages.infections') }}" class="{{ 'active' if active_page == 'infections' else '' }}">Infections</a>
-        <a href="{{ url_for('pages.vaccination_improvement') }}" class="{{ 'active' if active_page == 'vaccination_improvement' else '' }}">Improvement</a>
-        <a href="{{ url_for('pages.infection_benchmark') }}" class="{{ 'active' if active_page == 'infection_benchmark' else '' }}">Benchmark</a>
+        <a href="{{ url_for('pages.home') }}" class="{{ 'active' if active_page == 'home' else '' }}"{% if active_page == 'home' %} aria-current="page"{% endif %}>Overview</a>
+        <a href="{{ url_for('pages.mission') }}" class="{{ 'active' if active_page == 'mission' else '' }}"{% if active_page == 'mission' %} aria-current="page"{% endif %}>Mission</a>
+        <a href="{{ url_for('pages.vaccinations') }}" class="{{ 'active' if active_page == 'vaccinations' else '' }}"{% if active_page == 'vaccinations' %} aria-current="page"{% endif %}>Vaccinations</a>
+        <a href="{{ url_for('pages.infections') }}" class="{{ 'active' if active_page == 'infections' else '' }}"{% if active_page == 'infections' %} aria-current="page"{% endif %}>Infections</a>
+        <a href="{{ url_for('pages.vaccination_improvement') }}" class="{{ 'active' if active_page == 'vaccination_improvement' else '' }}"{% if active_page == 'vaccination_improvement' %} aria-current="page"{% endif %}>Improvement</a>
+        <a href="{{ url_for('pages.infection_benchmark') }}" class="{{ 'active' if active_page == 'infection_benchmark' else '' }}"{% if active_page == 'infection_benchmark' %} aria-current="page"{% endif %}>Benchmark</a>
       </nav>
     </div>
   </header>

@@ -1,4 +1,50 @@
-# Responsive, Accessibility, and Visual Verification
+# Verification
+
+## Current verification after contribution integration — 10 September 2026
+
+- Full suite: `python -B -m unittest discover -s tests -q` — **73/73 pass**. The sequence was 57 after CHANGE 1/2, 69 after CHANGE 3/4/5, and 73 after contribution integration; these are separate historical checkpoints.
+- CONTRIBUTION 1/2/3/5 are integrated on Infections: sortable headers with retained query parameters and active `aria-sort`; country/economy row headers; native methodology disclosure; short neutral README attribution. Existing sort dropdowns remain. Critical missing-data, mismatch and denominator warnings stay outside the collapsed detail.
+- Four new tests in `tests/test_member_components.py`: `test_header_links_preserve_filters_and_toggle_direction`, `test_header_results_equal_dropdown_and_expose_one_active_sort`, `test_country_and_economy_labels_are_row_headers`, and `test_critical_methodology_stays_outside_collapsed_details`.
+- Component tests follow header links, check repeated query parameters and numeric filters, compare with dropdown sorting, and verify that economy summaries remain unchanged.
+- Integration smoke: all six canonical pages and the stylesheet returned HTTP 200. Benchmark MEA/2020 retained 28 countries and its leading global row; MCV1/2000–2024 Top 3 remained TCD/CAF/COD across presentation sorts; DTPCV1/2000 retained 139 usable countries and 85.55% average coverage.
+- Database, queries, routes, validation and calculations were unchanged by the contribution integration. Database SHA-256 remains `B1BD2B9BD95E246906362AB71B272AADD861C2F66B0CED62EADAE9D42326A6BF`.
+- CHANGE 1–12 are complete within their approved scopes. CHANGE 12 retained local development history and ignored test bytecode; it did not untrack `docs/superpowers`. CHANGE 13/14 were not performed.
+- This is automated/Flask verification, not a new browser viewport, screen-reader or medical-validity audit. Source-data anomalies remain as recorded. No stage, commit, push, branch switch or additional cleanup belongs to this documentation pass.
+- Final documentation audit reran all 73 tests successfully, resolved every Jinja include/import/extends reference, and checked all six pages, the stylesheet and rendered local href/src URLs (HTTP 200). `git diff --check` found no whitespace errors, only Windows line-ending notices. Database hash was unchanged. README attribution was reviewed and retained without edits.
+
+## Historical data-fix verification — CHANGE 1/2
+
+The following preserves evidence from the CHANGE 1/2 checkpoint. Use the current section above for the latest suite count and integration status. Earlier browser checks are historical evidence, not a new viewport sweep.
+
+- Before CHANGE 1/2: all 54 existing tests passed. Three added tests exposed nine failing subcases involving blank or malformed numeric input.
+- After CHANGE 1/2: `python -B -m unittest discover -s tests -q` passed 57/57 tests. Genuine zero doses remain valid; blank, NULL and malformed text do not become numeric doses. Numeric text accepted by the REAL column affinity remains usable.
+- Coverage: 125/125 antigen/year combinations independently matched raw-data calculations, including usable counts, threshold counts, detail membership, and regional averages. Results changed in 95 combinations relative to the pre-fix query.
+- Improvement: 1500/1500 antigen/start-year/end-year combinations independently matched valid endpoint calculations and ordering. Full positive-result lists changed in 1454 combinations. Verification used a query limit of 500 to inspect all countries, not the UI's maximum of 50.
+- Primary SQLite was opened read-only for numerical verification. Tests and Flask smoke checks used temporary copies. Source database SHA-256 before/after: `B1BD2B9BD95E246906362AB71B272AADD861C2F66B0CED62EADAE9D42326A6BF`.
+
+| Sample | Before fixes | After fixes |
+|---|---|---|
+| DTPCV1 / 2000 usable countries | 148 | 139 |
+| DTPCV1 / 2000 mean coverage | 80.35% | 85.55% |
+| MCV1 / 2000 mean coverage | 79.56% | 80.06% |
+| MCV1 / 2000–2024 positive countries, before UI limit | 88 | 48 |
+| DTPCV1 / 2000–2024 positive countries, before UI limit | 81 | 34 |
+| Poland / DTPCV1 / 2024: doses blank, target 250884, coverage blank | False zero coverage | No usable coverage |
+| Sierra Leone / MCV1 / 2000–2024: start doses blank | False +3.926546 pp | Excluded from comparison |
+
+Direct calculation for Chad / MCV1: `112177 / 8512093 * 100 = 1.3178544924%` in 2000 and `863409 / 20299123 * 100 = 4.2534300620%` in 2024. Difference: `2.9355755696` percentage points; HTML displays `+2.936 pp`.
+
+All six canonical Flask routes returned HTTP 200. Rendered HTML was checked for DTPCV1/2000's 85.55% average, Poland's missing-data result, and Chad's corrected improvement. These are server-rendered checks, not a new visual browser audit.
+
+## Submission documentation pass — CHANGE 6, 8, 9, 10, 11
+
+Regional Summary wording now explicitly limits its scope to the selected filters. README and private/development ignore rules were added. The unused `immunisation_app/static/images/immunisation-hero.png` was removed after checking Python, HTML/Jinja, CSS, tests and dynamic path usage. No SQL, route, calculation, database or CSS changes belong to this pass.
+
+Post-change checks: 57/57 tests pass; all six canonical routes and the stylesheet return HTTP 200. The scope wording renders with default, country and region filters. `git diff --check` reports no whitespace errors. SHA-256 comparisons confirm that the database, query code, CSS and query tests are unchanged from the start of this documentation pass. `git check-ignore --no-index` confirms the new private/development exclusions, while `.env.example` and `database/immunisation.db` are not ignored. No commit or push was performed.
+
+At this historical checkpoint, CHANGE 3, 4, 5, 7, 12, 13 and 14 were still pending. Later approved work completed CHANGE 3/4/5/7/12 within scope; CHANGE 13/14 remain unperformed. Passing tests do not certify every assignment requirement as complete.
+
+## Historical responsive, accessibility, and visual verification
 
 **Date:** 9 September 2026
 **Task baseline:** `e4c1068`
@@ -91,7 +137,8 @@ The tracked SQLite database was queried directly during this verification:
 |---|---:|
 | Vaccination rows | 24,211 |
 | Missing or blank reported coverage | 5,415 |
-| Missing or non-positive target values | 153 |
+| Numeric non-positive target values | 153 |
+| Blank text target values | 5,931 |
 | Reported coverage above 100% | 1,312 |
 | Duplicate vaccination `(country, antigen, year)` groups | 0 |
 | Duplicate infection `(country, infection, year)` groups | 0 |
@@ -104,7 +151,7 @@ The vaccination page retains above-100% values and labels them; it does not cap 
 
 ## Final requirements and submission audit
 
-Task 10 began from commit `e3f1fdc`. All 28 rows in `docs/REQUIREMENTS_MATRIX.md` were checked against their named view, query, template, and test evidence. Every mandatory row is Met; none remains Partial or Blocked.
+Task 10 began from commit `e3f1fdc`. Its matrix review preceded the later data audit. Its historical acceptance decisions do not close the pending changes listed in the current verification section.
 
 Identity TDD evidence:
 
