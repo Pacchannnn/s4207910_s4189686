@@ -9,7 +9,11 @@ from pathlib import Path
 
 from immunisation_app.db import connect_database, initialise_project_tables
 from immunisation_app.queries import (
+    get_above_global_infections,
+    get_infection_by_economy,
+    get_personas,
     get_snapshot,
+    get_team_members,
     get_vaccination_improvements,
     get_vaccination_view,
 )
@@ -63,6 +67,54 @@ class QueryTests(unittest.TestCase):
         after = hashlib.sha256(self.database_path.read_bytes()).hexdigest()
         self.assertEqual(before, after)
         self.db = connect_database(self.database_path)
+
+    def test_project_table_initialisation_installs_submission_identities(self) -> None:
+        self.db.execute("DELETE FROM ProjectTeamMember")
+        self.db.commit()
+        self.db.close()
+
+        initialise_project_tables(self.database_path)
+
+        self.db = connect_database(self.database_path)
+        self.assertEqual(
+            [
+                (member["name"], member["student_number"])
+                for member in get_team_members(self.db)
+            ],
+            [
+                ("Le Chi Bach", "s4207910"),
+                ("Nguyen Tran Ba Trong", "s4189686"),
+            ],
+        )
+
+    def test_mission_data_is_retrieved_from_database(self) -> None:
+        personas = get_personas(self.db)
+        members = get_team_members(self.db)
+
+        self.assertGreaterEqual(len(personas), 3)
+        self.assertEqual(len(members), 2)
+        self.assertTrue(all(row["student_number"] for row in members))
+
+    def test_team_data_contains_submission_identities(self) -> None:
+        members = get_team_members(self.db)
+
+        self.assertEqual(
+            {member["student_number"] for member in members},
+            {"s4207910", "s4189686"},
+        )
+        self.assertTrue(
+            all("replace in database" not in member["name"].lower() for member in members)
+        )
+        self.assertEqual(
+            [
+                (member["name"], member["student_number"])
+                for member in members
+            ],
+            [
+                ("Le Chi Bach", "s4207910"),
+                ("Nguyen Tran Ba Trong", "s4189686"),
+            ],
+        )
 
     def test_vaccination_view_filters_and_summarises_in_sql(self) -> None:
         result = get_vaccination_view(
@@ -122,6 +174,97 @@ class QueryTests(unittest.TestCase):
             all(row["target_status"] == "Reported above 100%" for row in anomalous_rows)
         )
 
+    def test_infection_view_calculates_rate_and_all_economy_summary(self) -> None:
+        result = get_infection_by_economy(
+            self.db,
+            economy_id=3,
+            infection_id="MEA",
+            year=2022,
+            search="",
+            sort_by="rate",
+            direction="desc",
+        )
+
+        self.assertGreater(len(result["rows"]), 0)
+        self.assertEqual(len(result["summary"]), 4)
+        self.assertTrue(all(row["economy_id"] == 3 for row in result["rows"]))
+        self.assertTrue(all(row["infection"] == "Measles" for row in result["rows"]))
+        self.assertTrue(all(row["year"] == 2022 for row in result["rows"]))
+        self.assertEqual(
+            set(result["rows"][0]),
+            {
+                "country",
+                "economy_id",
+                "economy",
+                "infection",
+                "year",
+                "cases",
+                "population",
+                "cases_per_100k",
+            },
+        )
+        rates = [row["cases_per_100k"] for row in result["rows"]]
+        self.assertEqual(rates, sorted(rates, reverse=True))
+        sample = result["rows"][0]
+        expected = sample["cases"] / sample["population"] * 100000
+        self.assertAlmostEqual(sample["cases_per_100k"], expected, places=6)
+        for item in result["summary"]:
+            expected_rate = item["total_cases"] / item["represented_population"] * 100000
+            self.assertAlmostEqual(item["cases_per_100k"], expected_rate, places=6)
+
+    def test_infection_view_applies_country_search_and_all_sort_modes(self) -> None:
+        # This catches a removed SQL search predicate or an unwhitelisted sort mapping.
+        filtered = get_infection_by_economy(
+            self.db,
+            economy_id=3,
+            infection_id="MEA",
+            year=2022,
+            search="Zimbabwe",
+            sort_by="country",
+            direction="asc",
+        )
+
+        self.assertEqual([row["country"] for row in filtered["rows"]], ["Zimbabwe"])
+
+        for sort_by, direction in (
+            ("country", "asc"),
+            ("cases", "desc"),
+            ("population", "asc"),
+            ("rate", "desc"),
+        ):
+            with self.subTest(sort_by=sort_by, direction=direction):
+                result = get_infection_by_economy(
+                    self.db,
+                    economy_id=3,
+                    infection_id="MEA",
+                    year=2022,
+                    search="",
+                    sort_by=sort_by,
+                    direction=direction,
+                )
+                rows = result["rows"]
+                if sort_by == "country":
+                    self.assertEqual(
+                        [row["country"] for row in rows],
+                        sorted(
+                            (row["country"] for row in rows),
+                            reverse=direction == "desc",
+                        ),
+                    )
+                    continue
+
+                expected_rows = sorted(
+                    rows,
+                    key=lambda row: (row[sort_by if sort_by != "rate" else "cases_per_100k"], row["country"]),
+                    reverse=False,
+                )
+                if direction == "desc":
+                    expected_rows = sorted(
+                        rows,
+                        key=lambda row: (-row[sort_by if sort_by != "rate" else "cases_per_100k"], row["country"]),
+                    )
+                self.assertEqual(rows, expected_rows)
+
     def test_vaccination_improvement_uses_two_year_datasets(self) -> None:
         rows = get_vaccination_improvements(
             self.db,
@@ -158,6 +301,87 @@ class QueryTests(unittest.TestCase):
             self.assertAlmostEqual(
                 row["improvement"], row["end_rate"] - row["start_rate"], places=6
             )
+
+    def test_vaccination_fallback_requires_numeric_doses_and_target(self) -> None:
+        cases = (
+            ("", 100, None),
+            ("   ", 100, None),
+            (None, 100, None),
+            ("95invalid", 100, None),
+            (95, "100invalid", None),
+            (95, "", None),
+            (95, None, None),
+            (95, 0, None),
+            (95, -100, None),
+            (0, 100, 0.0),
+            (95, 100, 95.0),
+            ("95", "100", 95.0),
+        )
+        for doses, target, expected in cases:
+            with self.subTest(doses=doses, target=target):
+                self.db.execute(
+                    "UPDATE Vaccination SET coverage = '', doses = ?, target_num = ? "
+                    "WHERE antigen = 'MCV1' AND year = 2024 AND country = 'AFG'",
+                    (doses, target),
+                )
+                result = get_vaccination_view(
+                    self.db, antigen="MCV1", year=2024, country="AFG",
+                    region="", sort_by="country", direction="asc",
+                )
+                self.assertEqual(result["metrics"]["average_coverage"], expected)
+                self.assertEqual(
+                    result["metrics"]["countries_with_data"], int(expected is not None)
+                )
+                self.assertEqual(result["summary"][0]["average_coverage"], expected)
+                self.assertEqual(len(result["rows"]), int(expected == 95.0))
+
+    def test_reported_coverage_remains_usable_without_doses(self) -> None:
+        self.db.execute(
+            "UPDATE Vaccination SET coverage = 103, doses = '', target_num = '' "
+            "WHERE antigen = 'MCV1' AND year = 2024 AND country = 'AFG'"
+        )
+        result = get_vaccination_view(
+            self.db, antigen="MCV1", year=2024, country="AFG",
+            region="", sort_by="country", direction="asc",
+        )
+        self.assertEqual(result["metrics"]["average_coverage"], 103.0)
+        self.assertEqual(result["rows"][0]["target_status"], "Reported above 100%")
+
+    def test_improvement_requires_numeric_doses_at_both_endpoints(self) -> None:
+        self.db.execute(
+            "UPDATE CountryPopulation SET population = 100 "
+            "WHERE country = 'AFG' AND year IN (2000, 2024)"
+        )
+        cases = (
+            ("", 100, None),
+            ("   ", 100, None),
+            (None, 100, None),
+            ("invalid", 100, None),
+            ("50invalid", 100, None),
+            (0, "", None),
+            (0, None, None),
+            (0, "100invalid", None),
+            (0, 100, 100.0),
+            (50, 100, 50.0),
+            ("50", "100", 50.0),
+        )
+        for start_doses, end_doses, expected in cases:
+            with self.subTest(start=start_doses, end=end_doses):
+                self.db.executemany(
+                    "UPDATE Vaccination SET doses = ? "
+                    "WHERE antigen = 'MCV1' AND country = 'AFG' AND year = ?",
+                    ((start_doses, 2000), (end_doses, 2024)),
+                )
+                rows = get_vaccination_improvements(
+                    self.db, antigen="MCV1", start_year=2000, end_year=2024,
+                    limit=500, sort_by="improvement", direction="desc",
+                )
+                actual = next((r for r in rows if r["country_id"] == "AFG"), None)
+                if expected is None:
+                    self.assertIsNone(actual)
+                else:
+                    self.assertIsNotNone(actual)
+                    self.assertAlmostEqual(actual["improvement"], expected)
 
     def test_vaccination_improvement_uses_matching_endpoint_populations_and_exclusions(
         self,
@@ -244,6 +468,88 @@ class QueryTests(unittest.TestCase):
                     else:
                         expected = sorted(rows, key=lambda row: (-row[field], row["country"]))
                     self.assertEqual(rows, expected)
+
+    def test_above_global_query_puts_global_row_first(self) -> None:
+        rows = get_above_global_infections(self.db, infection_id="MEA", year=2020)
+
+        self.assertGreater(len(rows), 1)
+        self.assertEqual(rows[0]["row_type"], "global")
+        global_rate = rows[0]["cases_per_100k"]
+        country_rates = [row["cases_per_100k"] for row in rows[1:]]
+        self.assertTrue(all(rate > global_rate for rate in country_rates))
+        self.assertEqual(country_rates, sorted(country_rates, reverse=True))
+
+    def test_benchmark_is_weighted_strict_and_deterministic(self) -> None:
+        self.db.execute(
+            "DELETE FROM InfectionData WHERE inf_type = ? AND year = ?",
+            ("MEA", 2020),
+        )
+        self.db.executemany(
+            "UPDATE CountryPopulation SET population = ? "
+            "WHERE country = ? AND year = ?",
+            (
+                (400_000, "AFG", 2020),
+                (100_000, "DZA", 2020),
+                (100_000, "AGO", 2020),
+                (100_000, "ALB", 2020),
+            ),
+        )
+        self.db.executemany(
+            "INSERT INTO InfectionData (inf_type, country, year, cases) "
+            "VALUES (?, ?, ?, ?)",
+            (
+                ("MEA", "AFG", 2020, 60),
+                ("MEA", "DZA", 2020, 20),
+                ("MEA", "AGO", 2020, 30),
+                ("MEA", "ALB", 2020, 30),
+            ),
+        )
+        self.db.commit()
+
+        rows = get_above_global_infections(self.db, infection_id="MEA", year=2020)
+
+        self.assertEqual(
+            [row["country"] for row in rows],
+            ["Global benchmark", "Albania", "Angola"],
+        )
+        self.assertEqual(rows[0]["cases"], 140)
+        self.assertEqual(rows[0]["population"], 700_000)
+        self.assertAlmostEqual(rows[0]["cases_per_100k"], 20.0)
+
+        for sort_by, field in (
+            ("country", "country"), ("cases", "cases"),
+            ("population", "population"), ("rate", "cases_per_100k"),
+        ):
+            for direction in ("asc", "desc"):
+                with self.subTest(sort_by=sort_by, direction=direction):
+                    actual = get_above_global_infections(
+                        self.db, infection_id="MEA", year=2020,
+                        sort_by=sort_by, direction=direction,
+                    )
+                    expected = sorted(rows[1:], key=lambda row: row["country"])
+                    expected.sort(key=lambda row: row[field], reverse=direction == "desc")
+                    self.assertEqual(actual, [rows[0], *expected])
+
+        # An exact tie with the global rate must never qualify.
+        self.db.execute("UPDATE InfectionData SET cases = 0 WHERE inf_type = 'MEA' AND year = 2020")
+        zero_rows = get_above_global_infections(self.db, infection_id="MEA", year=2020)
+        self.assertEqual(len(zero_rows), 1)
+        self.assertEqual(zero_rows[0]["row_type"], "global")
+        self.assertEqual(zero_rows[0]["cases_per_100k"], 0.0)
+
+        self.db.execute("UPDATE CountryPopulation SET population = 0 WHERE year = 2020")
+        self.assertEqual(get_above_global_infections(self.db, infection_id="MEA", year=2020), [])
+
+    def test_benchmark_returns_no_global_row_without_source_data(self) -> None:
+        self.db.execute(
+            "DELETE FROM InfectionData WHERE inf_type = ? AND year = ?",
+            ("MEA", 2020),
+        )
+        self.db.commit()
+
+        rows = get_above_global_infections(self.db, infection_id="MEA", year=2020)
+
+        self.assertEqual(rows, [])
 
     def test_sort_inputs_are_whitelisted(self) -> None:
         result = get_vaccination_view(

@@ -3,6 +3,13 @@ __pycache__/
 .venv/
 .pytest_cache/
 .DS_Store
-.superpowers/
+venv/
 .env
+.env.*
+!.env.example
+.superpowers/
+.vscode/
+.idea/
+Thumbs.db
+*.log
 /docs/superpowers/

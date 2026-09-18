@@ -1,0 +1,13 @@
+<fieldset class="direction-control">
+  <legend>Direction</legend>
+  <div class="direction-options">
+    <label>
+      <input type="radio" name="direction" value="asc" {{ 'checked' if filters.direction == 'asc' else '' }} aria-label="Ascending">
+      <span>Asc <span aria-hidden="true">↑</span></span>
+    </label>
+    <label>
+      <input type="radio" name="direction" value="desc" {{ 'checked' if filters.direction == 'desc' else '' }} aria-label="Descending">
+      <span>Desc <span aria-hidden="true">↓</span></span>
+    </label>
+  </div>
+</fieldset>

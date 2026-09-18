@@ -1,7 +1,16 @@
 <aside class="methodology-band" aria-labelledby="methodology-title">
   <div>
-    <p class="eyebrow light">Method</p>
+    <p class="eyebrow light">Method and data limitations</p>
     <h2 id="methodology-title">{{ methodology_title }}</h2>
   </div>
-  <p>{{ methodology_text }}</p>
+  {% if methodology_intro is defined or (methodology_extra is defined and methodology_extra) %}
+  <div>
+    <p>{{ methodology_intro|default(methodology_text) }}</p>
+    <details class="methodology-details">
+      <summary>{{ methodology_details_title|default("How the economy rate is calculated") }}</summary>
+      <p>{{ methodology_text if methodology_intro is defined else methodology_extra }}</p>
+    </details>
+  </div>
+  {% else %}<p>{{ methodology_text }}</p>{% endif %}
+  <p><a href="{{ url_for('pages.mission') }}#data-notes">Read the data notes</a></p>
 </aside>

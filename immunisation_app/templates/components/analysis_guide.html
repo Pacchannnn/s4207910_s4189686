@@ -1,0 +1,46 @@
+{% if active_page == 'vaccinations' %}
+  {% set parameters = [
+    ('Antigen', 'The vaccine or dose category to analyse.'),
+    ('Year', 'The year of vaccination data.'),
+    ('Country / region', 'Optional selections to narrow the results.'),
+    ('Sorting', 'Changes the display order of returned rows.')
+  ] %}
+  {% set outcome = 'Coverage context, countries meeting the project 90% target, and a regional summary. The project target is not a universal herd-immunity threshold.' %}
+{% elif active_page == 'infections' %}
+  {% set parameters = [
+    ('Economic status', 'The economic group used for the selected summary.'),
+    ('Infection type / year', 'The infection and its reporting year.'),
+    ('Country contains', 'An optional country-name filter for detail rows.'),
+    ('Advanced filters', 'Filter detail rows by cases, population or cases per 100,000 without changing economy summaries.')
+  ] %}
+  {% set outcome = 'Economy metrics and country comparisons of cases, population and rate. Cases per 100,000 is the population-adjusted infection rate.' %}
+{% elif active_page == 'vaccination_improvement' %}
+  {% set parameters = [
+    ('Antigen', 'The vaccination antigen to compare.'),
+    ('Start / end year', 'The beginning and end of the comparison; the end must be later.'),
+    ('Number of countries', 'How many of the greatest positive improvements to return.'),
+    ('Sorting', 'Changes display order after the Top N countries have been selected.')
+  ] %}
+  {% set outcome = 'Positive changes in recorded doses relative to same-year population, not target coverage. Improvement is end-year rate minus start-year rate, in percentage points. Missing doses are not zero.' %}
+{% else %}
+  {% set parameters = [
+    ('Infection type', 'The infection to analyse.'),
+    ('Year', 'The reporting year.'),
+    ('Sorting', 'Changes only the order of country rows; the global row remains first.')
+  ] %}
+  {% set outcome = 'The weighted global infection benchmark and countries whose reported rate exceeds it. The benchmark uses the represented population with matching records.' %}
+{% endif %}
+{% if guide_ready %}
+<details class="analysis-guide">
+  <summary>How to read this analysis</summary>
+{% else %}
+<section class="analysis-guide" aria-labelledby="analysis-guide-title">
+  <p class="eyebrow">How to use this page</p>
+  <h2 id="analysis-guide-title"><span aria-hidden="true">ⓘ</span> Choose your analysis settings</h2>
+  <p>Check the controls on the left (above on smaller screens), then apply your selections.</p>
+{% endif %}
+  <dl class="parameter-guide">
+    {% for name, explanation in parameters %}<div><dt>{{ name }}</dt><dd>{{ explanation }}</dd></div>{% endfor %}
+  </dl>
+  <p><strong>What you will see:</strong> {{ outcome }}</p>
+{% if guide_ready %}</details>{% else %}</section>{% endif %}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+import math
 from typing import Any
 
 
@@ -85,6 +86,30 @@ def get_reference_data(db: sqlite3.Connection) -> dict[str, list[dict[str, Any]]
     }
 
 
+def get_personas(db: sqlite3.Connection) -> list[dict[str, Any]]:
+    return _rows(
+        db.execute(
+            """
+            SELECT name, role, goal, need, app_feature
+            FROM ProjectPersona
+            ORDER BY persona_id
+            """
+        )
+    )
+
+
+def get_team_members(db: sqlite3.Connection) -> list[dict[str, Any]]:
+    return _rows(
+        db.execute(
+            """
+            SELECT name, student_number, responsibility
+            FROM ProjectTeamMember
+            ORDER BY member_id
+            """
+        )
+    )
+
+
 def get_vaccination_view(
     db: sqlite3.Connection,
     *,
@@ -119,7 +144,9 @@ def get_vaccination_view(
     coverage_expression = """
         COALESCE(
             CAST(NULLIF(TRIM(CAST(v.coverage AS TEXT)), '') AS REAL),
-            CASE WHEN v.target_num > 0
+            CASE WHEN typeof(v.doses) IN ('integer', 'real')
+                      AND typeof(v.target_num) IN ('integer', 'real')
+                      AND v.target_num > 0
                 THEN v.doses * 100.0 / v.target_num END
         )
     """
@@ -199,6 +226,111 @@ def get_vaccination_view(
     }
 
 
+def get_infection_by_economy(
+    db: sqlite3.Connection,
+    *,
+    economy_id: int,
+    infection_id: str,
+    year: int,
+    search: str,
+    sort_by: str,
+    direction: str,
+    numeric_column: str = "",
+    numeric_operator: str = "gte",
+    numeric_value: float | None = None,
+) -> dict[str, Any]:
+    order_column, order_direction = _safe_order(
+        sort_by,
+        direction,
+        {
+            "country": "country",
+            "cases": "cases",
+            "population": "population",
+            "rate": "cases_per_100k",
+        },
+        "rate",
+    )
+    search_filter = ""
+    parameters: list[Any] = [infection_id, year, economy_id]
+    if search:
+        search_filter = "AND c.name LIKE ?"
+        parameters.append(f"%{search}%")
+
+    numeric_filter = ""
+    if numeric_column or numeric_value is not None:
+        columns = {"cases": "cases", "population": "population", "rate": "cases_per_100k"}
+        operators = {"gt": ">", "gte": ">=", "lt": "<", "lte": "<=", "eq": "="}
+        if (numeric_column not in columns or numeric_operator not in operators
+                or not isinstance(numeric_value, (int, float))
+                or not math.isfinite(numeric_value) or numeric_value < 0):
+            raise ValueError("Invalid numeric filter.")
+        numeric_filter = f"WHERE {columns[numeric_column]} {operators[numeric_operator]} ?"
+        parameters.append(numeric_value)
+
+    detail_sql = f"""
+        WITH rates AS (
+            SELECT
+                c.name AS country,
+                e.economyID AS economy_id,
+                e.phase AS economy,
+                it.description AS infection,
+                id.year,
+                id.cases,
+                cp.population,
+                id.cases * 100000.0 / NULLIF(cp.population, 0) AS cases_per_100k
+            FROM InfectionData AS id
+            JOIN Infection_Type AS it ON it.id = id.inf_type
+            JOIN Country AS c ON c.CountryID = id.country
+            JOIN Economy AS e ON e.economyID = c.economy
+            JOIN CountryPopulation AS cp
+                ON cp.country = id.country AND cp.year = id.year
+            WHERE id.inf_type = ?
+              AND id.year = ?
+              AND e.economyID = ?
+              AND cp.population > 0
+              {search_filter}
+        )
+        SELECT
+            country,
+            economy_id,
+            economy,
+            infection,
+            year,
+            cases,
+            population,
+            cases_per_100k
+        FROM rates
+        {numeric_filter}
+        ORDER BY {order_column} {order_direction}, country ASC
+        LIMIT 500
+    """
+    summary_sql = """
+        SELECT
+            e.economyID AS economy_id,
+            e.phase AS economy,
+            SUM(id.cases) AS total_cases,
+            SUM(cp.population) AS represented_population,
+            SUM(id.cases) * 100000.0 / NULLIF(SUM(cp.population), 0) AS cases_per_100k,
+            COUNT(DISTINCT c.CountryID) AS country_count
+        FROM InfectionData AS id
+        JOIN Country AS c ON c.CountryID = id.country
+        JOIN Economy AS e ON e.economyID = c.economy
+        JOIN CountryPopulation AS cp
+            ON cp.country = id.country AND cp.year = id.year
+        WHERE id.inf_type = ?
+          AND id.year = ?
+          AND cp.population > 0
+        GROUP BY e.economyID, e.phase
+        ORDER BY total_cases DESC
+    """
+    rows = _rows(db.execute(detail_sql, parameters))
+    summary = _rows(db.execute(summary_sql, (infection_id, year)))
+    selected_summary = next(
+        (row for row in summary if row["economy_id"] == economy_id), None
+    )
+    return {"rows": rows, "summary": summary, "selected_summary": selected_summary}
+
+
 def get_vaccination_improvements(
     db: sqlite3.Connection,
     *,
@@ -232,7 +364,7 @@ def get_vaccination_improvements(
                 ON cp.country = v.country AND cp.year = v.year
             WHERE v.antigen = ?
               AND v.year = ?
-              AND v.doses IS NOT NULL
+              AND typeof(v.doses) IN ('integer', 'real')
               AND cp.population > 0
             GROUP BY c.CountryID, c.name
         ),
@@ -246,7 +378,7 @@ def get_vaccination_improvements(
                 ON cp.country = v.country AND cp.year = v.year
             WHERE v.antigen = ?
               AND v.year = ?
-              AND v.doses IS NOT NULL
+              AND typeof(v.doses) IN ('integer', 'real')
               AND cp.population > 0
             GROUP BY c.CountryID
         ),
@@ -260,6 +392,11 @@ def get_vaccination_improvements(
             FROM start_rates AS s
             JOIN end_rates AS e ON e.country_id = s.country_id
             WHERE e.end_rate - s.start_rate > 0
+        ),
+        top_improvements AS (
+            SELECT * FROM improvements
+            ORDER BY improvement DESC, country ASC
+            LIMIT ?
         )
         SELECT
             country_id,
@@ -270,9 +407,8 @@ def get_vaccination_improvements(
             start_rate,
             end_rate,
             improvement
-        FROM improvements
+        FROM top_improvements
         ORDER BY {order_column} {order_direction}, country ASC
-        LIMIT ?
     """
     return _rows(
         db.execute(
@@ -282,10 +418,94 @@ def get_vaccination_improvements(
                 start_year,
                 antigen,
                 end_year,
+                limit,
                 antigen,
                 start_year,
                 end_year,
-                limit,
             ),
         )
     )
+
+
+def get_above_global_infections(
+    db: sqlite3.Connection, *, infection_id: str, year: int,
+    sort_by: str = "rate", direction: str = "desc",
+) -> list[dict[str, Any]]:
+    order_column, order_direction = _safe_order(
+        sort_by, direction,
+        {"country": "country", "cases": "cases", "population": "population",
+         "rate": "cases_per_100k"}, "rate",
+    )
+    sql = f"""
+        WITH country_rates AS (
+            SELECT
+                c.CountryID AS country_id,
+                c.name AS country,
+                it.description AS infection,
+                id.year,
+                id.cases,
+                cp.population,
+                id.cases * 100000.0 / NULLIF(cp.population, 0) AS cases_per_100k
+            FROM InfectionData AS id
+            JOIN Infection_Type AS it ON it.id = id.inf_type
+            JOIN Country AS c ON c.CountryID = id.country
+            JOIN CountryPopulation AS cp
+                ON cp.country = id.country AND cp.year = id.year
+            WHERE id.inf_type = ?
+              AND id.year = ?
+              AND cp.population > 0
+        ),
+        global_rate AS (
+            SELECT
+                SUM(cases) AS cases,
+                SUM(population) AS population,
+                SUM(cases) * 100000.0 / NULLIF(SUM(population), 0) AS cases_per_100k
+            FROM country_rates
+        ),
+        combined AS (
+            SELECT
+                0 AS row_order,
+                'global' AS row_type,
+                NULL AS country_id,
+                'Global benchmark' AS country,
+                (SELECT infection FROM country_rates LIMIT 1) AS infection,
+                ? AS year,
+                cases,
+                population,
+                cases_per_100k
+            FROM global_rate
+            WHERE cases_per_100k IS NOT NULL
+
+            UNION ALL
+
+            SELECT
+                1 AS row_order,
+                'country' AS row_type,
+                cr.country_id,
+                cr.country,
+                cr.infection,
+                cr.year,
+                cr.cases,
+                cr.population,
+                cr.cases_per_100k
+            FROM country_rates AS cr
+            WHERE EXISTS (
+                SELECT 1
+                FROM global_rate AS gr
+                WHERE cr.cases_per_100k > gr.cases_per_100k
+            )
+        )
+        SELECT
+            row_order,
+            row_type,
+            country_id,
+            country,
+            infection,
+            year,
+            cases,
+            population,
+            cases_per_100k
+        FROM combined
+        ORDER BY row_order ASC, {order_column} {order_direction}, country ASC
+    """
+    return _rows(db.execute(sql, (infection_id, year, year)))

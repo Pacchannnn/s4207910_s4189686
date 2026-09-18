@@ -9,7 +9,7 @@
     <p class="hero-copy">Compare vaccination coverage, infection rates and long-term change across countries without losing the context behind the numbers.</p>
     <div class="button-row">
       <a class="button primary" href="{{ url_for('pages.vaccinations') }}">Explore vaccination data</a>
-      <a class="button ghost" href="{{ url_for('pages.vaccination_improvement') }}">Compare vaccination changes</a>
+      <a class="button ghost" href="{{ url_for('pages.mission') }}">Read our mission</a>
     </div>
   </div>
 </section>
@@ -21,7 +21,6 @@
         <p class="eyebrow">Database snapshot</p>
         <h2 id="snapshot-title">Four facts about the dataset</h2>
       </div>
-      <p>Every value below is queried from SQLite when this page loads.</p>
     </div>
     <div class="fact-grid">
       <article class="fact-card accent-red">
@@ -48,14 +47,13 @@
   </div>
 </section>
 
-<section class="section band-dark" aria-labelledby="topics-title">
+<section class="section band-dark compact-band" aria-labelledby="topics-title">
   <div class="content-shell">
     <div class="section-heading split-heading light-heading">
       <div>
         <p class="eyebrow light">Explore the evidence</p>
         <h2 id="topics-title">Move from overview to analysis</h2>
       </div>
-      <p>Each view keeps calculations in SQL and labels rates with their denominator.</p>
     </div>
     <div class="path-grid">
       <a class="path-item" href="{{ url_for('pages.vaccinations') }}">
@@ -64,11 +62,23 @@
         <p>Filter an antigen and year, then compare countries and regional target attainment.</p>
         <span class="text-link">Open vaccination explorer</span>
       </a>
-      <a class="path-item" href="{{ url_for('pages.vaccination_improvement') }}">
+      <a class="path-item" href="{{ url_for('pages.infections') }}">
         <span class="path-number">02</span>
+        <h3>Cases by economy</h3>
+        <p>Compare reported cases and population-adjusted rates across economic groups.</p>
+        <span class="text-link">Open infection explorer</span>
+      </a>
+      <a class="path-item" href="{{ url_for('pages.vaccination_improvement') }}">
+        <span class="path-number">03</span>
         <h3>Coverage improvement</h3>
         <p>Compare population-based vaccination rates between two reporting years.</p>
         <span class="text-link">Open improvement analysis</span>
+      </a>
+      <a class="path-item" href="{{ url_for('pages.infection_benchmark') }}">
+        <span class="path-number">04</span>
+        <h3>Global benchmark</h3>
+        <p>See the weighted global rate and countries reporting rates above it.</p>
+        <span class="text-link">Open benchmark analysis</span>
       </a>
     </div>
   </div>
@@ -80,6 +90,7 @@
       <p class="eyebrow">Latest reporting year</p>
       <h2 id="latest-title">Reported cases by infection type</h2>
       <p>Relative bar lengths compare totals within {{ snapshot.last_year }}. Case counts are not adjusted for population in this chart.</p>
+      <a class="text-link dark-link" href="{{ url_for('pages.infections') }}">Compare rates per 100,000</a>
     </div>
     <div class="bar-chart" aria-label="Reported cases by infection type in latest year">
       {% for item in infection_totals %}
@@ -92,3 +103,4 @@
   </div>
 </section>
 {% endblock %}
+

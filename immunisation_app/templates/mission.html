@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Mission and Personas | Immunisation Lens{% endblock %}
+{% block content %}
+<section class="page-intro mission-intro">
+  <div class="content-shell intro-grid">
+    <div>
+      <p class="eyebrow">Mission and audience</p>
+      <h1>Evidence that informs without overstating.</h1>
+    </div>
+    <p class="lead">Explore respectfully presented data on vaccination and reported infections. Use filters and comparisons to understand the results and their limits.</p>
+  </div>
+</section>
+
+<section class="section band-teal compact-band" aria-labelledby="how-title">
+  <div class="content-shell">
+    <div class="section-heading split-heading light-heading">
+      <div>
+        <p class="eyebrow light">How to use the site</p>
+        <h2 id="how-title">Explore, filter, compare</h2>
+      </div>
+      <p>The site supports quick orientation and deeper investigation without presenting association as causation.</p>
+    </div>
+    <ol class="use-steps">
+      <li><span aria-hidden="true">◎</span><div><h3>Explore the dataset</h3><p>Start with the <a href="{{ url_for('pages.home') }}">database overview</a> and this mission page.</p></div></li>
+      <li><span aria-hidden="true">≡</span><div><h3>Filter results</h3><p>Use the <a href="{{ url_for('pages.vaccinations') }}">vaccination</a> and <a href="{{ url_for('pages.infections') }}">infection</a> explorers to filter by place, topic and year.</p></div></li>
+      <li><span aria-hidden="true">↔</span><div><h3>Compare</h3><p>Compare <a href="{{ url_for('pages.vaccination_improvement') }}">vaccination change between two years</a> or place countries against a <a href="{{ url_for('pages.infection_benchmark') }}">weighted global infection rate</a>.</p></div></li>
+    </ol>
+  </div>
+</section>
+
+<section class="section" aria-labelledby="personas-title">
+  <div class="content-shell">
+    <div class="section-heading split-heading">
+      <div><p class="eyebrow">Personas</p><h2 id="personas-title">Our Target Users</h2></div>
+    </div>
+    <div class="persona-grid">
+      {% for persona in personas %}
+      <article class="persona-card">
+        <div class="persona-topline"><span>{{ persona.role }}</span><span>{{ '%02d'|format(loop.index) }}</span></div>
+        <h3>{{ persona.name }}</h3>
+        <dl>
+          <div><dt>Goal</dt><dd>{{ persona.goal }}</dd></div>
+          <div><dt>Need</dt><dd>{{ persona.need }}</dd></div>
+          <div><dt>Supported by</dt><dd>{{ persona.app_feature }}</dd></div>
+        </dl>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="section section-rule" aria-labelledby="team-title">
+  <div class="content-shell two-column-section align-start">
+    <div class="section-heading compact-heading">
+      <p class="eyebrow">Project team</p>
+      <h2 id="team-title">Built by two people</h2>
+    </div>
+    <div class="team-list">
+      {% for member in members %}
+      <article class="team-row" data-responsibility="{{ member.responsibility }}">
+        <span class="team-index">{{ '%02d'|format(loop.index) }}</span>
+        <div><h3>{{ member.name }}</h3><p>{{ member.student_number }}</p></div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+<section id="data-notes" class="section section-rule" aria-labelledby="data-notes-title">
+  <div class="content-shell">
+    <div class="section-heading compact-heading">
+      <h2 id="data-notes-title">Data notes: what the terms mean</h2>
+    </div>
+    <dl class="data-glossary">
+      <div><dt>Antigen</dt><dd>The vaccine or dose category selected for the vaccination analysis.</dd></div>
+      <div><dt>Vaccination coverage</dt><dd>The reported coverage percentage, with a fallback of valid doses divided by a positive target count, multiplied by 100. Missing doses do not provide a fallback.</dd></div>
+      <div><dt>Recorded doses and population-based rate</dt><dd>Doses are the recorded administered doses. Improvement compares doses divided by the population in the same year, multiplied by 100. This uses population, not the coverage target. Both years require valid data.</dd></div>
+      <div><dt>Percentage points (pp)</dt><dd>The end-year rate minus the start-year rate. This is how vaccination improvement is expressed.</dd></div>
+      <div><dt>Infection rate</dt><dd>Reported cases divided by the matching same-year population, multiplied by 100,000: cases per 100,000 people.</dd></div>
+      <div><dt>Global benchmark</dt><dd>Total reported cases divided by total represented population, multiplied by 100,000. It is weighted, not a simple average of country rates, and represents valid matching records rather than the entire world population.</dd></div>
+    </dl>
+  </div>
+</section>
+{% endblock %}
+

@@ -1,0 +1,7 @@
+# Exclude development history from Git-generated submission archives.
+# This does not untrack files or exclude them from a normal Git push.
+/.superpowers export-ignore
+/docs/superpowers export-ignore
+**/__pycache__ export-ignore
+**/*.pyc export-ignore
+/.pytest_cache export-ignore

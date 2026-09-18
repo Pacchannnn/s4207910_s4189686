@@ -8,25 +8,25 @@ from flask import Flask, current_app, g
 
 PERSONAS = (
     (
-        "Public health student",
-        "Learner",
-        "Understand how vaccination coverage and infection rates differ across countries.",
-        "Clear definitions, comparable units and guided filters.",
-        "Landing snapshot, vaccination explorer and global benchmark.",
+        "Dr Amara Okonkwo",
+        "Regional Public Health Analyst",
+        "Identify countries falling behind in infection control to prioritise outbreak-response funding.",
+        "Comparable infection rates per 100,000 rather than raw case counts.",
+        "Infection explorer and global benchmark.",
     ),
     (
-        "Policy researcher",
-        "Analyst",
-        "Identify geographic patterns and countries that may warrant closer investigation.",
-        "Traceable calculations, flexible sorting and transparent data-quality handling.",
-        "Economy comparison, improvement ranking and downloadable-looking tables.",
+        "Liem Tran",
+        "Public Health Student",
+        "Explore disease burden and economic conditions using reliable figures.",
+        "The year, population, case count and rate shown together.",
+        "Economy comparison and country results.",
     ),
     (
-        "Community educator",
-        "Communicator",
-        "Find reliable, neutral evidence to support public conversations about immunisation.",
-        "Plain language, respectful framing and concise evidence summaries.",
-        "Mission page, four-fact snapshot and labelled rates per 100,000 people.",
+        "Sofia Mascherano",
+        "Health Journalist",
+        "Check claims about measles resurgence under a tight deadline.",
+        "Clear country rates, not raw totals alone.",
+        "Sortable country data and the global benchmark.",
     ),
 )
 

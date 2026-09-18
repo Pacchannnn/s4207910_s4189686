@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Global Infection Benchmark | Immunisation Lens{% endblock %}
+{% block content %}
+<section class="page-intro analysis-page-intro benchmark-intro">
+  <div class="content-shell intro-grid">
+    <div><p class="eyebrow">Deep analysis</p><h1>Countries above the global infection rate</h1></div>
+    <p class="lead">Calculate a weighted global benchmark for one infection and year, then identify countries whose reported rate exceeds it.</p>
+  </div>
+</section>
+
+{% if submitted and not errors %}
+<div class="analysis-overview">
+{% if global_row %}
+<section class="section compact-section" aria-labelledby="global-title"><div class="content-shell global-benchmark">
+  <div><p class="eyebrow light">Weighted result</p><h2 id="global-title">Global benchmark</h2><p>{{ global_row.infection }} in {{ global_row.year }}</p></div>
+  <div class="global-number"><strong>{{ global_row.cases_per_100k|number(3) }}</strong><span>per 100,000 people</span></div>
+  <dl><div><dt>Cases</dt><dd>{{ global_row.cases|number }}</dd></div><div><dt>Population represented</dt><dd>{{ global_row.population|number }}</dd></div></dl>
+</div></section>
+{% endif %}
+</div>
+{% endif %}
+{% set guide_ready = submitted and not errors %}
+<div class="analysis-layout" id="analysis">
+<aside class="analysis-sidebar" aria-label="Global benchmark filters"><div class="content-shell">
+    <h2 class="filter-title">Filter the data</h2>
+  <form class="filter-form benchmark-form" method="get">
+    <label><span>Infection type</span><select name="infection" required>{% for item in reference.infections %}<option value="{{ item.id }}" {{ 'selected' if item.id == filters.infection else '' }}>{{ item.name }}</option>{% endfor %}</select></label>
+    <label><span>Year</span><select name="year" required>{% for item in reference.years %}<option value="{{ item.value }}" {{ 'selected' if item.value == filters.year else '' }}>{{ item.value }}</option>{% endfor %}</select></label>
+    <fieldset class="filter-group sort-group"><legend>Sort results</legend>
+    <label><span>Sort countries by</span><select name="sort">
+      {% for key, label in [('country', 'Country'), ('cases', 'Cases'), ('population', 'Population'), ('rate', 'Cases per 100,000')] %}<option value="{{ key }}" {{ 'selected' if filters.sort == key else '' }}>{{ label }}</option>{% endfor %}
+    </select></label>
+    {% include "components/sort_direction.html" %}
+    </fieldset>
+    <button class="button primary submit-filter" type="submit">Calculate benchmark</button>
+      {% include "components/filter_reset.html" %}
+  </form>
+</div></aside>
+<div class="analysis-results">
+
+
+<div class="content-shell">
+  {% set error_title = "Check the filters" %}
+  {% include "components/validation_notice.html" %}
+</div>
+{% if not guide_ready %}{% include "components/analysis_guide.html" %}{% endif %}
+{% if guide_ready %}
+
+
+
+<section class="section compact-section section-rule" aria-labelledby="country-benchmark-title"><div class="content-shell">
+  {% if global_row %}
+  <div class="section-heading split-heading results-heading"><div><p class="eyebrow">Country comparison</p><h2 id="country-benchmark-title">{{ country_rows|length }} {{ 'country' if country_rows|length == 1 else 'countries' }} above the global rate</h2></div><p>The global value always appears first. Your selected sort changes only the order of the country rows, not which countries exceed the benchmark.</p></div>
+  <div class="table-shell" role="region" aria-label="Scrollable benchmark comparison table" tabindex="0"><table>
+    <caption>Global benchmark and countries above it for {{ global_row.infection }} in {{ global_row.year }}</caption>
+    <thead><tr><th scope="col">Scope</th><th scope="col">Infection</th><th scope="col">Year</th><th scope="col" class="numeric">Cases</th><th scope="col" class="numeric">Population</th><th scope="col" class="numeric">Cases per 100,000 people</th></tr></thead>
+    <tbody>
+      <tr class="global-row"><th scope="row"><strong>Global benchmark</strong></th><td>{{ global_row.infection }}</td><td>{{ global_row.year }}</td><td class="numeric">{{ global_row.cases|number }}</td><td class="numeric">{{ global_row.population|number }}</td><td class="numeric"><strong>{{ global_row.cases_per_100k|number(3) }}</strong></td></tr>
+      {% for row in country_rows %}<tr><th scope="row"><strong>{{ row.country }}</strong></th><td>{{ row.infection }}</td><td>{{ row.year }}</td><td class="numeric">{{ row.cases|number }}</td><td class="numeric">{{ row.population|number }}</td><td class="numeric">{{ row.cases_per_100k|number(3) }}</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% elif not errors %}<div class="empty-state" aria-labelledby="country-benchmark-title"><p class="eyebrow">No matching results</p><h2 id="country-benchmark-title">No benchmark available</h2><p>A weighted benchmark requires reported cases and a positive represented population. Choose another year or infection type.</p></div>
+  {% else %}<h2 class="sr-only" id="country-benchmark-title">Benchmark results</h2>{% endif %}
+</div></section>
+
+{% if guide_ready %}{% include "components/analysis_guide.html" %}{% endif %}
+<section class="section compact-section"><div class="content-shell">
+  {% set methodology_title = "Why the benchmark is weighted" %}
+  {% set methodology_text = "Weighted global rate = total reported cases / total represented population x 100,000. The query does not take a simple average of country rates, which would give small and large countries equal influence. The denominator includes only matching country records for the selected infection and year with a positive same-year population, not the entire world population. Missing records are not added as zero cases. An economic-group match is not required here, so this comparison can include countries excluded from the economy view." %}
+  {% include "components/methodology_note.html" %}
+</div></section>
+{% endif %}
+</div>
+</div>
+{% endblock %}
+

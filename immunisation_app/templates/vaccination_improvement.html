@@ -1,43 +1,75 @@
 {% extends "base.html" %}
 {% block title %}Vaccination Improvement | Immunisation Lens{% endblock %}
 {% block content %}
-<section class="page-intro analysis-intro">
+<section class="page-intro analysis-page-intro analysis-intro">
   <div class="content-shell intro-grid">
-    <div><p class="eyebrow">Deep analysis</p><h1>Positive vaccination-rate improvements</h1></div>
-    <p class="lead">Compare increases in administered doses as a share of population. Your selected sort determines which countries appear within the result limit; choose Improvement and Descending to see the largest increases first.</p>
+    <div><p class="eyebrow">Deep analysis</p><h1>Positive vaccination rate improvements</h1></div>
+    <p class="lead">Compare recorded doses as a share of population across two years, and explore the countries with the largest positive changes.</p>
   </div>
 </section>
 
-<section class="filter-band" aria-label="Vaccination improvement filters"><div class="content-shell">
+{% if submitted and not errors %}
+<div class="analysis-overview">
+{% if not errors %}
+<section class="section compact-section" aria-labelledby="comparison-context-title">
+  <div class="content-shell">
+    <p class="eyebrow">Selected comparison</p>
+    <h2 id="comparison-context-title">{{ filters.antigen }}: {{ filters.start_year }} → {{ filters.end_year }}</h2>
+    <p>Up to {{ filters.limit }} countries with the greatest positive improvement.</p>
+  </div>
+</section>
+{% endif %}
+</div>
+{% endif %}
+{% set guide_ready = submitted and not errors %}
+<div class="analysis-layout" id="analysis">
+<aside class="analysis-sidebar" aria-label="Vaccination improvement filters"><div class="content-shell">
+    <h2 class="filter-title">Compare years</h2>
   <form class="filter-form improvement-form" method="get">
     <label><span>Antigen</span><select name="antigen" required>{% for item in reference.antigens %}<option value="{{ item.id }}" {{ 'selected' if item.id == filters.antigen else '' }}>{{ item.id }} - {{ item.name }}</option>{% endfor %}</select></label>
     <label><span>Start year</span><select name="start_year" required>{% for item in reference.years|reverse %}<option value="{{ item.value }}" {{ 'selected' if item.value == filters.start_year else '' }}>{{ item.value }}</option>{% endfor %}</select></label>
     <label><span>End year</span><select name="end_year" required>{% for item in reference.years %}<option value="{{ item.value }}" {{ 'selected' if item.value == filters.end_year else '' }}>{{ item.value }}</option>{% endfor %}</select></label>
     <label><span>Number of countries</span><input type="number" name="limit" min="3" max="50" value="{{ filters.limit }}" required></label>
-    <div class="sort-pair"><label><span>Sort by</span><select name="sort"><option value="improvement" {{ 'selected' if filters.sort == 'improvement' else '' }}>Improvement</option><option value="end_rate" {{ 'selected' if filters.sort == 'end_rate' else '' }}>End rate</option><option value="start_rate" {{ 'selected' if filters.sort == 'start_rate' else '' }}>Start rate</option><option value="country" {{ 'selected' if filters.sort == 'country' else '' }}>Country</option></select></label><label><span>Direction</span><select name="direction"><option value="desc" {{ 'selected' if filters.direction == 'desc' else '' }}>Descending</option><option value="asc" {{ 'selected' if filters.direction == 'asc' else '' }}>Ascending</option></select></label></div>
+    <fieldset class="filter-group sort-group"><legend>Sort results</legend>
+    <div class="sort-pair"><label><span>Sort by</span><select name="sort"><option value="improvement" {{ 'selected' if filters.sort == 'improvement' else '' }}>Improvement</option><option value="end_rate" {{ 'selected' if filters.sort == 'end_rate' else '' }}>End rate</option><option value="start_rate" {{ 'selected' if filters.sort == 'start_rate' else '' }}>Start rate</option><option value="country" {{ 'selected' if filters.sort == 'country' else '' }}>Country</option></select></label>{% include "components/sort_direction.html" %}</div>
+    </fieldset>
     <button class="button primary submit-filter" type="submit">Compare years</button>
+      {% include "components/filter_reset.html" %}
   </form>
-</div></section>
+</div></aside>
+<div class="analysis-results">
+
 
 <div class="content-shell">
   {% set error_title = "Check the comparison" %}
   {% include "components/validation_notice.html" %}
 </div>
+{% if not guide_ready %}{% include "components/analysis_guide.html" %}{% endif %}
+{% if guide_ready %}
 
-<section class="section compact-section"><div class="content-shell">
-  {% set methodology_title = "Doses relative to population" %}
-  {% set methodology_text = "For each country at each endpoint, rate = administered doses / population x 100. Only countries with data for both years and a positive population at each endpoint are comparable. Improvement = end rate - start rate; SQL ranks positive changes." %}
-  {% include "components/methodology_note.html" %}
-</div></section>
+
 
 <section class="section compact-section section-rule" aria-labelledby="improvement-results-title"><div class="content-shell">
   <div class="section-heading split-heading results-heading"><div><p class="eyebrow">Ranked result</p><h2 id="improvement-results-title">{{ rows|length }} countries returned</h2></div><p>Rates describe recorded doses as a percentage of population; they are not the provided target-coverage field.</p></div>
+  <p class="result-guidance">The requested number of countries with the largest improvements are selected first. Your selected sort only changes their display order; choose Improvement and Descending to view them from largest to smallest increase. Position indicates display order, not improvement rank under other sorts.</p>
   {% if rows %}
   <div class="table-shell" role="region" aria-label="Scrollable vaccination improvement results table" tabindex="0"><table>
     <caption>Positive vaccination-rate improvements for {{ rows[0].antigen }} from {{ rows[0].start_year }} to {{ rows[0].end_year }}</caption>
     <thead><tr><th scope="col">Position</th><th scope="col">Country</th><th scope="col">Antigen</th><th scope="col" class="numeric">Start year</th><th scope="col" class="numeric">End year</th><th scope="col" class="numeric">Start rate</th><th scope="col" class="numeric">End rate</th><th scope="col" class="numeric">Improvement</th></tr></thead>
     <tbody>{% for row in rows %}<tr><td><span class="rank-number">{{ loop.index }}</span></td><td><strong>{{ row.country }}</strong></td><td>{{ row.antigen }}</td><td class="numeric">{{ row.start_year }}</td><td class="numeric">{{ row.end_year }}</td><td class="numeric">{{ row.start_rate|number(3) }}%</td><td class="numeric">{{ row.end_rate|number(3) }}%</td><td class="numeric"><span class="change-positive">+{{ row.improvement|number(3) }} pp</span></td></tr>{% endfor %}</tbody>
   </table></div>
-  {% elif not errors %}<div class="empty-state"><h3>No positive improvement found</h3><p>Only countries with data for both years and positive endpoint populations can be compared. Try a wider time range or another antigen.</p></div>{% endif %}
+  {% elif not errors %}<div class="empty-state"><p class="eyebrow">No matching results</p><h3>No positive improvement found</h3><p>Only countries with data for both years and positive endpoint populations can be compared. Try a wider time range or another antigen.</p></div>{% endif %}
 </div></section>
+{% if guide_ready %}{% include "components/analysis_guide.html" %}{% endif %}
+<section class="section compact-section"><div class="content-shell">
+  {% set methodology_title = "Doses relative to population" %}
+  {% set methodology_text = "For each country at each endpoint, rate = administered doses / population x 100. Only countries with data for both years and a positive population at each endpoint are comparable. Improvement = end rate - start rate; SQL ranks positive changes. Both years must have numeric doses and a matching country and same-year population record. Blank doses are missing, not zero; a country missing either endpoint is excluded, not assigned an improvement." %}
+  {% set methodology_intro = "Rate compares recorded doses with the population in the same year. Improvement is the end-year rate minus the start-year rate, in percentage points. Missing doses are not zero; both years require valid doses and a matching positive population." %}
+  {% set methodology_details_title = "Calculation details" %}
+  {% include "components/methodology_note.html" %}
+</div></section>
+{% endif %}
+</div>
+</div>
 {% endblock %}
+
