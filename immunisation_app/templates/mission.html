@@ -11,7 +11,7 @@
   </div>
 </section>
 
-<section class="section band-teal" aria-labelledby="how-title">
+<section class="section band-teal compact-band" aria-labelledby="how-title">
   <div class="content-shell">
     <div class="section-heading split-heading light-heading">
       <div>
@@ -31,8 +31,7 @@
 <section class="section" aria-labelledby="personas-title">
   <div class="content-shell">
     <div class="section-heading split-heading">
-      <div><p class="eyebrow">Personas from SQLite</p><h2 id="personas-title">Who this experience serves</h2></div>
-      <p>These personas are stored in and retrieved from the project database.</p>
+      <div><p class="eyebrow">Personas</p><h2 id="personas-title">Our Target Users</h2></div>
     </div>
     <div class="persona-grid">
       {% for persona in personas %}
@@ -54,15 +53,13 @@
   <div class="content-shell two-column-section align-start">
     <div class="section-heading compact-heading">
       <p class="eyebrow">Project team</p>
-      <h2 id="team-title">Built across two data streams</h2>
-      <p>Names, student numbers and responsibilities are retrieved from the database rather than hardcoded in this page.</p>
+      <h2 id="team-title">Built by two people</h2>
     </div>
     <div class="team-list">
       {% for member in members %}
-      <article class="team-row">
+      <article class="team-row" data-responsibility="{{ member.responsibility }}">
         <span class="team-index">{{ '%02d'|format(loop.index) }}</span>
         <div><h3>{{ member.name }}</h3><p>{{ member.student_number }}</p></div>
-        <strong>{{ member.responsibility }}</strong>
       </article>
       {% endfor %}
     </div>
@@ -72,7 +69,6 @@
   <div class="content-shell">
     <div class="section-heading compact-heading">
       <h2 id="data-notes-title">Data notes: what the terms mean</h2>
-      <p>Missing data is not zero. Each analysis page explains which records its results represent.</p>
     </div>
     <dl class="data-glossary">
       <div><dt>Antigen</dt><dd>The vaccine or dose category selected for the vaccination analysis.</dd></div>

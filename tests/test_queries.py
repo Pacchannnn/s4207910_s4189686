@@ -516,6 +516,30 @@ class QueryTests(unittest.TestCase):
         self.assertEqual(rows[0]["population"], 700_000)
         self.assertAlmostEqual(rows[0]["cases_per_100k"], 20.0)
 
+        for sort_by, field in (
+            ("country", "country"), ("cases", "cases"),
+            ("population", "population"), ("rate", "cases_per_100k"),
+        ):
+            for direction in ("asc", "desc"):
+                with self.subTest(sort_by=sort_by, direction=direction):
+                    actual = get_above_global_infections(
+                        self.db, infection_id="MEA", year=2020,
+                        sort_by=sort_by, direction=direction,
+                    )
+                    expected = sorted(rows[1:], key=lambda row: row["country"])
+                    expected.sort(key=lambda row: row[field], reverse=direction == "desc")
+                    self.assertEqual(actual, [rows[0], *expected])
+
+        # An exact tie with the global rate must never qualify.
+        self.db.execute("UPDATE InfectionData SET cases = 0 WHERE inf_type = 'MEA' AND year = 2020")
+        zero_rows = get_above_global_infections(self.db, infection_id="MEA", year=2020)
+        self.assertEqual(len(zero_rows), 1)
+        self.assertEqual(zero_rows[0]["row_type"], "global")
+        self.assertEqual(zero_rows[0]["cases_per_100k"], 0.0)
+
+        self.db.execute("UPDATE CountryPopulation SET population = 0 WHERE year = 2020")
+        self.assertEqual(get_above_global_infections(self.db, infection_id="MEA", year=2020), [])
+
     def test_benchmark_returns_no_global_row_without_source_data(self) -> None:
         self.db.execute(
             "DELETE FROM InfectionData WHERE inf_type = ? AND year = ?",

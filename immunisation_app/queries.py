@@ -489,8 +489,11 @@ def get_above_global_infections(
                 cr.population,
                 cr.cases_per_100k
             FROM country_rates AS cr
-            CROSS JOIN global_rate AS gr
-            WHERE cr.cases_per_100k > gr.cases_per_100k
+            WHERE EXISTS (
+                SELECT 1
+                FROM global_rate AS gr
+                WHERE cr.cases_per_100k > gr.cases_per_100k
+            )
         )
         SELECT
             row_order,
